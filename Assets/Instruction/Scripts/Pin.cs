@@ -6,9 +6,16 @@ using UnityEngine.EventSystems;
 public class ItemPinSingleText : MonoBehaviour
 {
     [Header("UI Elements")]
-    public GameObject pinPanel;              // The panel containing the PIN UI
+    public GameObject pinPanel;              // Panel PIN (Panel 1)
     public TextMeshProUGUI pinDisplay;       // Displays both numbers and error messages
     public Button submitButton;              // Submit button
+
+    [Header("Extra Panel")]
+    public GameObject otherPanel;            // Panel 2 ที่จะโชว์แทน
+    public Button button1;                   // ปุ่มแรกใน panel
+    public Button button2;                   // ปุ่มสองใน panel
+    public TextMeshProUGUI targetText;       // TMP ที่จะโชว์ข้อความจาก Inspector
+    [TextArea] public string message;        // ข้อความจาก Inspector
 
     [Header("Settings")]
     public string correctPin = "4567";       // Correct 4-digit PIN
@@ -19,9 +26,32 @@ public class ItemPinSingleText : MonoBehaviour
     void Start()
     {
         pinPanel.SetActive(false);
+        if (otherPanel != null) otherPanel.SetActive(false); // ปิด panel 2 ตอนเริ่มเกม
         pinDisplay.text = "";
         submitButton.onClick.AddListener(SubmitPin);
+
+        // ปุ่มแรก → ใส่ข้อความลงใน target TMP
+        if (button1 != null)
+        {
+            button1.onClick.AddListener(() =>
+            {
+                if (targetText != null)
+                    targetText.text = message;
+            });
+        }
+
+        // ปุ่มสอง → ปิด pinPanel แล้วเปิด otherPanel
+        if (button2 != null)
+        {
+            button2.onClick.AddListener(() =>
+            {
+                ClosePanel();
+                if (otherPanel != null)
+                    otherPanel.SetActive(true);
+            });
+        }
     }
+
 
     void Update()
     {
@@ -78,7 +108,7 @@ public class ItemPinSingleText : MonoBehaviour
         pinDisplay.text = "";
         isClicked = true;
 
-        // ตำแหน่ง panel ใกล้เมาส์ตอนเปิดครั้งเดียว
+        // ตำแหน่ง panel ใกล้เมาส์
         Vector2 mousePos;
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
             pinPanel.transform.parent as RectTransform,
