@@ -29,17 +29,13 @@ public class FollowMousePanel : MonoBehaviour
         }
     }
 
-    void OnMouseDown()
-    {
-        OpenPanel();
-    }
-
-    private void OpenPanel()
+    // เรียกจาก DialogueManager เวลาโดนคลิก
+    public void OpenPanelFromOutside()
     {
         panel.SetActive(true);
         isActive = true;
 
-        // Optionally, position panel near mouse when opening
+        // Position panel near mouse when opening
         Vector2 mousePos;
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
             panel.transform.parent as RectTransform,
@@ -59,13 +55,37 @@ public class FollowMousePanel : MonoBehaviour
 
     bool IsPointerOverUI()
     {
-        return EventSystem.current.IsPointerOverGameObject();
+        return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
     }
 
     bool IsPointerOverItem()
     {
         Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        Collider2D hit = Physics2D.OverlapPoint(mousePos);
-        return hit != null && hit.gameObject == this.gameObject;
+
+        RaycastHit2D[] hits = Physics2D.RaycastAll(mousePos, Vector2.zero);
+
+        if (hits.Length > 0)
+        {
+            GameObject topObject = null;
+            int topSortingOrder = int.MinValue;
+
+            foreach (var hit in hits)
+            {
+                SpriteRenderer sr = hit.collider.GetComponent<SpriteRenderer>();
+                if (sr != null)
+                {
+                    if (sr.sortingOrder > topSortingOrder)
+                    {
+                        topSortingOrder = sr.sortingOrder;
+                        topObject = hit.collider.gameObject;
+                    }
+                }
+            }
+
+            return topObject == this.gameObject;
+        }
+
+        return false;
     }
+
 }

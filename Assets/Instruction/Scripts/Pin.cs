@@ -96,7 +96,7 @@ public class ItemPinSingleText : MonoBehaviour
         }
         else
         {
-            pinDisplay.text = "Incorrect PIN. Try again!";
+            pinDisplay.text = "Incorrect PIN. Try again.";
             inputPin = "";
         }
     }
