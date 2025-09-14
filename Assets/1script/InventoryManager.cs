@@ -42,4 +42,6 @@ public class InventoryManager : MonoBehaviour
     {
         return items.Find(i => i.itemName == name);
     }
+
+
 }

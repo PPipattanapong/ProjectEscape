@@ -5,21 +5,31 @@ public class PickupItem : MonoBehaviour
     public string itemName;
     public Sprite itemIcon;
     [TextArea]
-    public string clueText; // clue ของ item (เช่น First two numbers are 4 and 5)
+    public string clueText;
 
     private bool collected = false;
 
-    private void OnMouseDown()
+    void Update()
     {
-        if (collected) return; // ป้องกันกดซ้ำ
-        if (!Input.GetMouseButtonDown(0)) return; // ต้องกดคลิกซ้าย
+        if (collected) return;
 
+        if (Input.GetMouseButtonDown(0))
+        {
+            Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            RaycastHit2D hit = Physics2D.Raycast(mousePos, Vector2.zero);
+
+            if (hit.collider != null && hit.collider.gameObject == gameObject)
+            {
+                Collect();
+            }
+        }
+    }
+
+    private void Collect()
+    {
         collected = true;
 
-        // เพิ่มเข้า inventory
         InventoryManager.Instance.AddItem(itemName, itemIcon, clueText);
-
-        // ซ่อนไอเท็มจากฉาก
         gameObject.SetActive(false);
 
         Debug.Log(itemName + " collected!");

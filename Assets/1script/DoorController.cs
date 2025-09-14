@@ -6,6 +6,9 @@ public class DoorController : MonoBehaviour, IItemReceiver
     public LightController rightLight;
     public LightController centerLight;
 
+    [Header("Extra Object To Enable")]
+    public GameObject unlockTarget; // 👉 ลาก GameObject ที่อยากให้โผล่มาใน Inspector
+
     private bool keyInserted = false;
     private SpriteRenderer spriteRenderer;
     private Collider2D doorCollider;
@@ -14,6 +17,10 @@ public class DoorController : MonoBehaviour, IItemReceiver
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
         doorCollider = GetComponent<Collider2D>();
+
+        // ปิด target ตั้งแต่แรก
+        if (unlockTarget != null)
+            unlockTarget.SetActive(false);
     }
 
     public void OnItemUsed(string itemName)
@@ -32,7 +39,6 @@ public class DoorController : MonoBehaviour, IItemReceiver
         }
     }
 
-
     void CheckDoor()
     {
         Debug.Log($"CheckDoor → left:{leftLight.isGreen}, right:{rightLight.isGreen}, key:{keyInserted}");
@@ -48,6 +54,10 @@ public class DoorController : MonoBehaviour, IItemReceiver
             // ✅ Disable collider so it no longer blocks
             if (doorCollider != null)
                 doorCollider.enabled = false;
+
+            // ✅ Active target object (เช่น Exit)
+            if (unlockTarget != null)
+                unlockTarget.SetActive(true);
         }
     }
 }

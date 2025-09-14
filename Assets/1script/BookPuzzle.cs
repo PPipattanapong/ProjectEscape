@@ -1,54 +1,130 @@
 using UnityEngine;
+using System.Collections;
 
 public class BookPuzzle : MonoBehaviour
 {
-    public int correctBookIndex = 1;
-    public GameObject[] books;
-    public GameObject memoryPuzzle;
+    [Header("Puzzle Settings")]
+    public GameObject[] books;        // หนังสือทั้งหมด
+    public Transform[] slots;         // ตำแหน่งบนชั้นวาง
+    public string[] correctOrder;     // ใช้ "ชื่อหนังสือ" แทน index
 
-    private bool solved = false;
+    [Header("Secret Door")]
+    public GameObject secretDoor;     // ประตูลับที่จะเลื่อน
+    public float moveDuration = 2f;   // เวลาในการเลื่อน
+    public float moveOffsetX = 2f;    // ✅ ขยับเพิ่มจากตำแหน่งเดิม
+
+    [Header("Extra Riddle Panel")]
+    public GameObject riddlePanel;    // Panel ปริศนา
+    public GameObject specialBook;    // หนังสือเล่มที่จะคลิกขวา
+
+    [HideInInspector] public bool solved = false;
 
     void Start()
     {
-        memoryPuzzle.SetActive(false);
+        // วางหนังสือตาม slot เริ่มต้น
         for (int i = 0; i < books.Length; i++)
         {
-            int idx = i;
-            books[i].AddComponent<BoxCollider2D>();
-            books[i].AddComponent<BookClick>().Setup(this, idx);
+            books[i].transform.position = slots[i].position;
+
+            var drag = books[i].AddComponent<BookDrag>();
+            drag.Setup(this, i);
         }
+
+        // ปิด panel ตั้งแต่แรก
+        if (riddlePanel != null)
+            riddlePanel.SetActive(false);
     }
 
-    public void OnBookClicked(int index)
+    void Update()
+    {
+        // ตรวจสอบการคลิกขวา
+        if (Input.GetMouseButtonDown(1)) // 1 = right click
+        {
+            Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            RaycastHit2D hit = Physics2D.Raycast(mousePos, Vector2.zero);
+
+            if (hit.collider != null && hit.collider.gameObject == specialBook)
+            {
+                Debug.Log("Right-clicked special book: " + specialBook.name);
+
+                if (riddlePanel != null)
+                {
+                    riddlePanel.SetActive(true);
+
+                    // เรียก MemoryPuzzle ให้โชว์เนื้อเรื่องและ input
+                    MemoryPuzzle mp = riddlePanel.GetComponent<MemoryPuzzle>();
+                    if (mp != null)
+                        mp.OpenPuzzle();
+                }
+            }
+        }
+    }
+    public void SwapBooks(BookDrag a, BookDrag b)
     {
         if (solved) return;
 
-        if (index == correctBookIndex)
+        int indexA = a.index;
+        int indexB = b.index;
+
+        // สลับ reference ใน array
+        GameObject temp = books[indexA];
+        books[indexA] = books[indexB];
+        books[indexB] = temp;
+
+        // อัปเดต index
+        a.index = indexB;
+        b.index = indexA;
+
+        // Snap ทุกเล่มกลับตำแหน่ง slot ของมัน
+        for (int i = 0; i < books.Length; i++)
         {
-            // เรียกเปิด MemoryPuzzlePanel ผ่านฟังก์ชัน OpenPuzzle
-            memoryPuzzle.GetComponent<MemoryPuzzle>().OpenPuzzle();
-            Debug.Log("Book puzzle triggered!");
+            books[i].transform.position = slots[i].position;
         }
-        else
+
+        // Debug ลำดับปัจจุบัน
+        string order = "";
+        for (int i = 0; i < books.Length; i++)
         {
-            Debug.Log("Wrong book, try again.");
+            order += books[i].name + (i < books.Length - 1 ? " | " : "");
         }
+        Debug.Log("Current order: " + order);
+
+        // ตรวจสอบว่าถูกหรือยัง
+        CheckSolved();
     }
 
-}
 
-public class BookClick : MonoBehaviour
-{
-    private BookPuzzle parent;
-    private int index;
-
-    public void Setup(BookPuzzle p, int i)
+    void CheckSolved()
     {
-        parent = p; index = i;
+        if (books.Length != correctOrder.Length) return;
+
+        for (int i = 0; i < books.Length; i++)
+        {
+            if (books[i].name != correctOrder[i])
+                return;
+        }
+
+        solved = true;
+        Debug.Log("Book puzzle solved! Secret door opening...");
+
+        if (secretDoor != null)
+            StartCoroutine(MoveSecretDoor());
     }
 
-    void OnMouseDown()
+    IEnumerator MoveSecretDoor()
     {
-        parent.OnBookClicked(index);
+        Vector3 startPos = secretDoor.transform.position;
+        Vector3 endPos = new Vector3(startPos.x + moveOffsetX, startPos.y, startPos.z);
+
+        float t = 0f;
+        while (t < moveDuration)
+        {
+            t += Time.deltaTime;
+            float progress = t / moveDuration;
+            secretDoor.transform.position = Vector3.Lerp(startPos, endPos, progress);
+            yield return null;
+        }
+
+        secretDoor.transform.position = endPos;
     }
 }
