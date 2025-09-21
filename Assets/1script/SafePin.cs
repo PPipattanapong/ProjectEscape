@@ -5,7 +5,7 @@ using System.Collections;
 public class SafePin : MonoBehaviour
 {
     [Header("Safe Settings")]
-    public string correctPin = "4567";
+    public string correctPin = "4567"; // ตั้งรหัสของเซฟนี้ได้ใน Inspector
     public TextMeshProUGUI pinDisplay;
     public GameObject keyReward;
 
@@ -15,7 +15,7 @@ public class SafePin : MonoBehaviour
     private string input = "";
     private bool solved = false;
     private SpriteRenderer safeRenderer;
-    public LightController centerLight; // set in Inspector
+    public LightController centerLight; // set in Inspector (optional)
 
     void Start()
     {
@@ -43,12 +43,12 @@ public class SafePin : MonoBehaviour
     {
         if (solved) return;
 
-        if (input == correctPin &&
-            InventoryManager.Instance.HasItem("NoteCombined"))
+        if (input == correctPin)
         {
             solved = true;
 
-            if (keyReward != null) keyReward.SetActive(true);
+            if (keyReward != null)
+                keyReward.SetActive(true);
 
             Debug.Log("Safe opened!");
 
@@ -64,13 +64,6 @@ public class SafePin : MonoBehaviour
 
             input = "";
         }
-        // case: correct code but requirements missing
-        else if (input == correctPin)
-        {
-            pinDisplay.text = "Requirements not passed!";
-            input = "";
-        }
-        // case: wrong code
         else
         {
             pinDisplay.text = "Wrong code!";

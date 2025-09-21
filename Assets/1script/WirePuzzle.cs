@@ -163,9 +163,22 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
 
         Debug.Log("Wire puzzle solved!");
 
+        // 🔥 ลบไขควงออกจาก inventory หลังจากแก้ปริศนาสำเร็จ
+        var slots = FindObjectsOfType<InventorySlot>();
+        foreach (var slot in slots)
+        {
+            if (slot.currentItem != null && slot.currentItem.itemName == requiredItem)
+            {
+                Destroy(slot.gameObject); // หรือจะทำ slot.ClearSlot() ถ้าอยากเก็บช่องไว้
+                Debug.Log("[Inventory] Screwdriver destroyed after puzzle solved!");
+                break;
+            }
+        }
+
         if (bgRenderer != null)
             StartCoroutine(FadeBackground());
     }
+
 
     IEnumerator FadeBackground()
     {

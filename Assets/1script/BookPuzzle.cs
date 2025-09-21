@@ -96,20 +96,22 @@ public class BookPuzzle : MonoBehaviour
 
     void CheckSolved()
     {
-        if (books.Length != correctOrder.Length) return;
-
         for (int i = 0; i < books.Length; i++)
         {
             if (books[i].name != correctOrder[i])
                 return;
         }
 
-        solved = true;
-        Debug.Log("Book puzzle solved! Secret door opening...");
+        solved = true; // 👈 แค่ flag นี้พอ
+        Debug.Log("Book puzzle solved!");
+
+        if (riddlePanel != null)
+            riddlePanel.SetActive(false);
 
         if (secretDoor != null)
             StartCoroutine(MoveSecretDoor());
     }
+
 
     IEnumerator MoveSecretDoor()
     {

@@ -30,8 +30,16 @@ public class PickupItem : MonoBehaviour
         collected = true;
 
         InventoryManager.Instance.AddItem(itemName, itemIcon, clueText);
+
+        // ถ้าเป็นไฟฉาย → เปิดระบบไฟฉาย
+        if (itemName == "UVFlashlight")
+        {
+            FlashlightController.Instance.EnableFlashlight();
+        }
+
         gameObject.SetActive(false);
 
         Debug.Log(itemName + " collected!");
     }
+
 }
