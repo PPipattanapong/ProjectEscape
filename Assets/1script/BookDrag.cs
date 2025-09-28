@@ -1,67 +1,39 @@
 ﻿using UnityEngine;
 
-public class BookDrag : MonoBehaviour
+public class BookClick : MonoBehaviour
 {
     private BookPuzzle puzzle;
     public int index;
 
-    private Vector3 offset;
-    private bool dragging = false;
-    public float swapDistance = 1f; // 👉 ระยะที่อนุญาตให้สลับ
+    private SpriteRenderer sr;
+    private Color originalColor;
 
     public void Setup(BookPuzzle p, int i)
     {
         puzzle = p;
         index = i;
+        sr = GetComponent<SpriteRenderer>();
+        if (sr != null)
+            originalColor = sr.color;
     }
 
     void OnMouseDown()
     {
-        if (puzzle == null || puzzle.solved) return;
-
-        dragging = true;
-        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        offset = transform.position - new Vector3(mousePos.x, mousePos.y, 0f);
+        if (puzzle != null && !puzzle.solved)
+        {
+            puzzle.SelectBook(this);
+        }
     }
 
-    void OnMouseDrag()
+    public void Highlight()
     {
-        if (!dragging) return;
-
-        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        transform.position = new Vector3(mousePos.x, mousePos.y, 0f) + offset;
+        if (sr != null)
+            sr.color = Color.white;
     }
 
-    void OnMouseUp()
+    public void ResetColor()
     {
-        if (!dragging) return;
-        dragging = false;
-
-        // หาเล่มที่ใกล้ที่สุด
-        float minDist = Mathf.Infinity;
-        BookDrag closest = null;
-
-        foreach (var book in puzzle.books)
-        {
-            if (book == gameObject) continue;
-
-            float dist = Vector3.Distance(transform.position, book.transform.position);
-            if (dist < minDist)
-            {
-                minDist = dist;
-                closest = book.GetComponent<BookDrag>();
-            }
-        }
-
-        // ถ้าใกล้พอ → สลับ
-        if (closest != null && minDist < swapDistance)
-        {
-            puzzle.SwapBooks(this, closest);
-        }
-        else
-        {
-            // snap กลับตำแหน่ง slot ปัจจุบัน
-            transform.position = puzzle.slots[index].position;
-        }
+        if (sr != null)
+            sr.color = originalColor;
     }
 }

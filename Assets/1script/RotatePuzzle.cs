@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.EventSystems;
+using System.Collections;
 using System.Collections.Generic;
 
 public class RotatePuzzle : MonoBehaviour, IItemReceiver
@@ -13,6 +14,11 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
     [Header("Accepted Items")]
     public string[] acceptedItems;   // รายชื่อไอเทมที่ใช้เปิดได้
 
+    [Header("Effects")]
+    public Color startColor = Color.red;    // สีเริ่มต้น (เช่นแดง)
+    public Color solvedColor = Color.white; // สีเป้าหมาย (เช่นขาว)
+    public float fadeDuration = 2f;         // ระยะเวลา fade
+
     private Quaternion targetRotation;
     private bool isPanelActive;
 
@@ -23,6 +29,14 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
 
         if (og != null)
             targetRotation = og.transform.rotation;
+
+        // เซ็ตสีเริ่มต้น (ถ้ามี SpriteRenderer)
+        SpriteRenderer sr = GetComponent<SpriteRenderer>();
+        if (sr != null)
+            sr.color = startColor;
+
+        if (unlockObject != null)
+            unlockObject.SetActive(false);
     }
 
     // ✅ รับไอเทมจาก InventorySlot
@@ -107,28 +121,74 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
             Debug.Log("[RotatePuzzle] Puzzle Solved!");
             ClosePanel();
 
-            // ✅ เปิด object ใหม่
-            if (unlockObject != null)
-                unlockObject.SetActive(true);
+            // ✅ ทำเอฟเฟกต์ fade
+            StartCoroutine(FadeSolvedEffects());
 
-            // ✅ ทำให้ item "Rotate" หายจาก inventory
+            // ✅ ทำให้ item "Rotate" หายจาก inventory (แต่ช่องยังอยู่)
             InventorySlot[] slots = FindObjectsOfType<InventorySlot>();
             foreach (var slot in slots)
             {
                 if (slot.currentItem != null && slot.currentItem.itemName == "Rotate")
                 {
-                    slot.gameObject.SetActive(false);
-                    Debug.Log("[RotatePuzzle] Removed Rotate item from inventory");
+                    slot.ClearSlot(); // ❌ ไม่ปิด slot, แค่ล้างของ
+                    Debug.Log("[RotatePuzzle] Cleared Rotate item from inventory");
                 }
             }
 
             // ✅ Sync RotateInBG (ตัวนี้ติดสคริปต์ RotatePuzzle) ให้เหมือน other
             transform.rotation = other.transform.rotation;
+        }
+    }
 
-            // ✅ เปลี่ยนสีเป็นขาว (ถ้ามี SpriteRenderer หรือ SpriteRenderer2D)
-            SpriteRenderer sr = GetComponent<SpriteRenderer>();
-            if (sr != null)
-                sr.color = Color.white;
+    IEnumerator FadeSolvedEffects()
+    {
+        SpriteRenderer sr = GetComponent<SpriteRenderer>();
+        float t = 0f;
+
+        if (unlockObject != null)
+        {
+            unlockObject.SetActive(true);
+            SpriteRenderer srUnlock = unlockObject.GetComponent<SpriteRenderer>();
+            if (srUnlock != null)
+            {
+                Color c = srUnlock.color;
+                c.a = 0f;
+                srUnlock.color = c;
+
+                // fade ทั้งสี object นี้ และ fade unlock object พร้อมกัน
+                while (t < fadeDuration)
+                {
+                    t += Time.deltaTime;
+                    float progress = t / fadeDuration;
+
+                    if (sr != null)
+                        sr.color = Color.Lerp(startColor, solvedColor, progress);
+
+                    srUnlock.color = new Color(c.r, c.g, c.b, Mathf.Lerp(0f, 1f, progress));
+
+                    yield return null;
+                }
+
+                // set ค่า final
+                if (sr != null) sr.color = solvedColor;
+                srUnlock.color = new Color(c.r, c.g, c.b, 1f);
+            }
+        }
+        else
+        {
+            // ถ้าไม่มี unlockObject → แค่ fade สีตัวเอง
+            while (t < fadeDuration)
+            {
+                t += Time.deltaTime;
+                float progress = t / fadeDuration;
+
+                if (sr != null)
+                    sr.color = Color.Lerp(startColor, solvedColor, progress);
+
+                yield return null;
+            }
+
+            if (sr != null) sr.color = solvedColor;
         }
     }
 

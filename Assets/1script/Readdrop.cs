@@ -20,6 +20,9 @@ public class Readdrop : MonoBehaviour
     public GameObject noteLeft;        // ของรางวัล
     public LightController doorLight;  // ไฟประตู (optional)
 
+    [Header("Fade Settings")]
+    public float fadeDuration = 1.5f;  // เวลา fade in/out
+
     private bool solved = false;
     private bool sawLastPage = false;
 
@@ -40,13 +43,7 @@ public class Readdrop : MonoBehaviour
 
     void Update()
     {
-        // 🚫 กัน panel ถูกบังคับเปิดหลัง solved
-        if (solved && panel != null && panel.activeSelf)
-        {
-            panel.SetActive(false);
-        }
-
-        // ✅ ปิดเมื่อคลิกนอก panel (ก่อน solved)
+        // ❌ ไม่ต้องไปปิด panel ใน Update หลัง solved
         if (!solved && panel != null && panel.activeSelf && Input.GetMouseButtonDown(0))
         {
             if (!IsPointerOverUIObject(panel))
@@ -59,9 +56,7 @@ public class Readdrop : MonoBehaviour
     // เปิด puzzle
     public void OpenPuzzle()
     {
-        Debug.Log($"[BookPuzzle] OpenPuzzle called | solved = {solved}");
-
-        if (solved || panel == null) return; // 🚫 ถ้าผ่านแล้วหรือ panel ถูกเซ็ต null → ห้ามเปิด
+        if (solved || panel == null) return;
 
         panel.SetActive(true);
         currentPage = 0;
@@ -70,14 +65,13 @@ public class Readdrop : MonoBehaviour
 
     private IEnumerator RefreshPageAfterOpen()
     {
-        yield return new WaitForEndOfFrame(); // รอ 1 เฟรม
+        yield return new WaitForEndOfFrame();
         ShowPage();
 
         if (hintText != null) hintText.ForceMeshUpdate();
         if (pageText != null) pageText.ForceMeshUpdate();
     }
 
-    // ✅ เรียกจากปุ่ม Next
     public void NextPage()
     {
         if (solved) return;
@@ -88,11 +82,10 @@ public class Readdrop : MonoBehaviour
             ShowPage();
 
             if (currentPage == pages.Length - 1)
-                sawLastPage = true; // เห็นหน้าสุดท้ายแล้ว
+                sawLastPage = true;
         }
     }
 
-    // ✅ เรียกจากปุ่ม Prev
     public void PrevPage()
     {
         if (solved) return;
@@ -102,13 +95,11 @@ public class Readdrop : MonoBehaviour
             currentPage--;
             ShowPage();
 
-            // เงื่อนไขชนะ: เคยเห็นหน้าสุดท้าย + กลับมาที่หน้า 2 (index = 1)
             if (sawLastPage && currentPage == 1)
                 PuzzleSolved();
         }
     }
 
-    // แสดงเนื้อหาหน้านั้น
     private void ShowPage()
     {
         if (pageText != null)
@@ -116,34 +107,73 @@ public class Readdrop : MonoBehaviour
 
         if (hintText != null && currentPage < pages.Length)
             hintText.text = pages[currentPage];
-
-        Debug.Log($"[BookPuzzle] Now at Page {currentPage + 1}");
     }
 
     private void PuzzleSolved()
     {
         solved = true;
 
-        if (noteLeft != null)
-            noteLeft.SetActive(true);
+        if (noteLeft != null && panel != null)
+            StartCoroutine(FadeInNoteAndFadeOutPanel(noteLeft, panel, fadeDuration));
 
         if (doorLight != null)
             doorLight.SetGreen();
 
-        Debug.Log("Book puzzle solved! Reward unlocked.");
-
-        // ✅ ลบ panel ออกไปเลย
-        if (panel != null)
-        {
-            Destroy(panel);
-            panel = null;
-        }
-
-        // ✅ ปิด collider ของ object นี้
         Collider2D col = GetComponent<Collider2D>();
         if (col != null) col.enabled = false;
+
+        Debug.Log("Book puzzle solved! Reward unlocked.");
     }
 
+    private IEnumerator FadeInNoteAndFadeOutPanel(GameObject noteObj, GameObject panelObj, float duration)
+    {
+        noteObj.SetActive(true);
+
+        // เตรียม Note (SpriteRenderer)
+        SpriteRenderer sr = noteObj.GetComponent<SpriteRenderer>();
+        Color noteColor = Color.white;
+        if (sr != null)
+        {
+            noteColor = sr.color;
+            noteColor.a = 0f;
+            sr.color = noteColor;
+        }
+
+        // เตรียม Panel (Image)
+        Image img = panelObj.GetComponent<Image>();
+        Color panelColor = Color.white;
+        if (img != null)
+        {
+            panelColor = img.color;
+            panelColor.a = 1f;
+            img.color = panelColor;
+        }
+
+        // Fade พร้อมกัน
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float progress = Mathf.Clamp01(t / duration);
+
+            if (sr != null)
+                sr.color = new Color(noteColor.r, noteColor.g, noteColor.b, progress);
+
+            if (img != null)
+                img.color = new Color(panelColor.r, panelColor.g, panelColor.b, 1f - progress);
+
+            yield return null;
+        }
+
+        if (sr != null)
+            sr.color = new Color(noteColor.r, noteColor.g, noteColor.b, 1f);
+
+        if (img != null)
+            img.color = new Color(panelColor.r, panelColor.g, panelColor.b, 0f);
+
+        Destroy(panelObj);
+        panel = null;
+    }
 
     public void ClosePanel()
     {
@@ -151,7 +181,6 @@ public class Readdrop : MonoBehaviour
             panel.SetActive(false);
     }
 
-    // ตรวจว่าคลิกโดน panel หรือ element ข้างในมั้ย
     private bool IsPointerOverUIObject(GameObject targetPanel)
     {
         PointerEventData eventData = new PointerEventData(eventSystem);

@@ -24,7 +24,7 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
     private bool isDragging = false;
     private bool solved = false;
     private bool startedOnStart = false;
-    private bool activated = false; // 👉 ต้องใช้ไขควงก่อนถึงจะเล่น puzzle ได้
+    private bool activated = false;
 
     private Collider2D fieldCollider;
     private Collider2D startCollider;
@@ -42,7 +42,6 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         endObject.SetActive(false);
         noteRight.SetActive(false);
 
-        // set สีเริ่ม BG
         if (bgRenderer != null)
             bgRenderer.color = startColor;
 
@@ -57,23 +56,13 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         endCollider = endObject.GetComponent<Collider2D>();
     }
 
-    // 👉 ฟังก์ชันที่ถูกเรียกตอนใช้ item จาก inventory มาลงบน fusebox
     public void OnItemUsed(string itemName)
     {
-        // ถ้าแก้ puzzle ได้แล้ว → ไม่รับ item อีก
-        if (solved)
-        {
-            Debug.Log("Fusebox already solved, no need to use items anymore.");
-            return;
-        }
+        if (solved) return;
 
-        // ยังไม่ solved → รับ item ได้
         if (itemName == requiredItem)
         {
-            Debug.Log("Fusebox activated with " + itemName);
             activated = true;
-
-            // เปิด puzzle (ซ่อน/โชว์ field ได้เรื่อย ๆ)
             fieldObject.SetActive(true);
             startObject.SetActive(true);
             foreach (var pathObj in pathObjects) pathObj.SetActive(true);
@@ -82,12 +71,7 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
             currentPathIndex = 0;
             startedOnStart = false;
         }
-        else
-        {
-            Debug.Log("Wrong item: " + itemName);
-        }
     }
-
 
     void Update()
     {
@@ -101,7 +85,7 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
             {
                 isDragging = true;
                 startedOnStart = true;
-                Debug.Log("Started puzzle from StartPoint ✅");
+                currentPathIndex = 0;
             }
             else
             {
@@ -114,25 +98,39 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
 
         if (isDragging && startedOnStart)
         {
+            // ออกนอกสนาม → reset
             if (!fieldCollider.OverlapPoint(mousePos))
             {
-                Debug.Log("ออกนอกสนาม → reset");
                 ResetPuzzle();
                 return;
             }
 
+            // ถ้าอยู่ใน field แต่ไม่ใช่ path / start / end → reset
+            bool onSpecial = startCollider.OverlapPoint(mousePos) || endCollider.OverlapPoint(mousePos);
+            bool onPath = false;
+            foreach (var col in pathColliders)
+            {
+                if (col.OverlapPoint(mousePos)) { onPath = true; break; }
+            }
+
+            if (!onSpecial && !onPath)
+            {
+                ResetPuzzle();
+                return;
+            }
+
+            // ผ่าน path ทีละอัน
             if (currentPathIndex < pathColliders.Count)
             {
                 if (pathColliders[currentPathIndex].OverlapPoint(mousePos))
                 {
-                    Debug.Log("ผ่าน Path " + currentPathIndex);
                     currentPathIndex++;
                 }
             }
 
+            // จบ puzzle
             if (currentPathIndex >= pathColliders.Count && endCollider.OverlapPoint(mousePos))
             {
-                Debug.Log("Wire puzzle solved!");
                 PuzzleSolved();
             }
         }
@@ -143,6 +141,7 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         isDragging = false;
         startedOnStart = false;
         currentPathIndex = 0;
+        activated = false; // ต้องใช้ item ใหม่อีกครั้ง
 
         fieldObject.SetActive(false);
         startObject.SetActive(false);
@@ -161,16 +160,13 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         foreach (var pathObj in pathObjects) pathObj.SetActive(false);
         endObject.SetActive(false);
 
-        Debug.Log("Wire puzzle solved!");
-
-        // 🔥 ลบไขควงออกจาก inventory หลังจากแก้ปริศนาสำเร็จ
+        // เคลียร์ไขควง
         var slots = FindObjectsOfType<InventorySlot>();
         foreach (var slot in slots)
         {
             if (slot.currentItem != null && slot.currentItem.itemName == requiredItem)
             {
-                Destroy(slot.gameObject); // หรือจะทำ slot.ClearSlot() ถ้าอยากเก็บช่องไว้
-                Debug.Log("[Inventory] Screwdriver destroyed after puzzle solved!");
+                slot.ClearSlot();
                 break;
             }
         }
@@ -179,11 +175,9 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
             StartCoroutine(FadeBackground());
     }
 
-
     IEnumerator FadeBackground()
     {
         float t = 0f;
-
         while (t < fadeDuration)
         {
             t += Time.deltaTime;
@@ -193,8 +187,6 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         }
 
         bgRenderer.color = solvedColor;
-
-        // หลังจาก fade เสร็จ → ค่อยๆโผล่ noteRight
         StartCoroutine(FadeIn(noteRight, 1.5f));
     }
 

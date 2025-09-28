@@ -30,8 +30,9 @@ public class InventoryManager : MonoBehaviour
     {
         ItemData newItem = new ItemData(name, icon, desc);
         items.Add(newItem);
-        InventoryUI.Instance.AddSlot(newItem);
+        InventoryUI.Instance.AddItem(newItem);
     }
+
 
     public bool HasItem(string name)
     {

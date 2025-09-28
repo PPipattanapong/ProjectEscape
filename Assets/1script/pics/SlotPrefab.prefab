@@ -137,7 +137,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.392}
+  m_Color: {r: 0.4792453, g: 0.46568176, b: 0.46568176, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -173,9 +173,17 @@ MonoBehaviour:
     itemName: 
     icon: {fileID: 0}
     description: 
+  slotExpandOffset: {x: 0, y: 50}
+  slotExpandSize: {x: 1000, y: 660}
+  iconExpandSize: {x: 500, y: 250}
+  nameExpandFontSize: 45
+  clueExpandFontSize: 40
+  nameAnchorMin: {x: 0, y: 0.7}
+  nameAnchorMax: {x: 1, y: 1}
+  clueAnchorMin: {x: 0, y: 0}
+  clueAnchorMax: {x: 1, y: 0.2}
   idleColor: {r: 1, g: 1, b: 1, a: 1}
   activeColor: {r: 0, g: 1, b: 1, a: 1}
-  expandedSize: {x: 400, y: 400}
 --- !u!1 &6687228876457766180
 GameObject:
   m_ObjectHideFlags: 0

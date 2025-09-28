@@ -4,7 +4,7 @@ using TMPro;
 using UnityEngine.EventSystems;
 using System.Collections.Generic;
 
-public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler
 {
     [Header("UI References")]
     public Image iconImage;
@@ -13,82 +13,146 @@ public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
 
     [HideInInspector] public ItemData currentItem;
 
-    private Canvas canvas;
-    private RectTransform rectTransform;
-    private CanvasGroup canvasGroup;
-    private Vector2 originalPos;
+    [Header("Expand Slot Offset")]
+    public Vector2 slotExpandOffset = Vector2.zero; // เลื่อนตำแหน่งตอน expand
 
-    // ✅ สูตรผสมของ
+    private Canvas canvas;
+    private CanvasGroup canvasGroup;
+
+    // Drag เฉพาะ icon
+    private RectTransform iconRect;
+    private Vector2 iconOriginalPos;
+    private Transform iconOriginalParent;
+    private Vector2 savedIconSize;
+
+    // Expand
+    private bool isExpanded = false;
+
+    private float originalNameFontSize;
+    private float originalClueFontSize;
+    private Vector2 originalNameSize;
+    private Vector2 originalClueSize;
+
+    // เก็บค่าเดิมของ SlotPrefab ทั้งกล่อง
+    private RectTransform rectTransform;
+    private Transform slotOriginalParent;
+    private Vector2 slotOriginalPos;
+    private Vector2 slotOriginalSize;
+    private int slotOriginalIndex;
+    private Vector2 slotOriginalAnchorMin;
+    private Vector2 slotOriginalAnchorMax;
+    private Vector2 slotOriginalPivot;
+
+    [Header("Expand Settings")]
+    public Vector2 slotExpandSize = new Vector2(1000, 600);   // ขนาด slot ตอนขยาย
+    public Vector2 iconExpandSize = new Vector2(500, 250);    // ขนาด icon ตอนขยาย
+    public float nameExpandFontSize = 48f;                    // ขนาดฟอนต์ชื่อ
+    public float clueExpandFontSize = 28f;                    // ขนาดฟอนต์คำใบ้
+
+    [Header("Expand Layout Anchors")]
+    public Vector2 nameAnchorMin = new Vector2(0f, 0.85f);
+    public Vector2 nameAnchorMax = new Vector2(1f, 1f);
+    public Vector2 clueAnchorMin = new Vector2(0f, 0f);
+    public Vector2 clueAnchorMax = new Vector2(1f, 0.2f);
+
+    // ✅ สูตรผสม
     public static Dictionary<(string, string), ItemData> combinationRecipes
         = new Dictionary<(string, string), ItemData>();
 
-    // ✅ เฉพาะไฟฉาย
+    // ✅ ไฟฉาย
     [Header("Flashlight Settings")]
     public Color idleColor = Color.white;
     public Color activeColor = Color.cyan;
     private bool isFlashlight => currentItem != null && currentItem.itemName == "UVFlashlight";
 
-    // ✅ Expand settings
-    [Header("Expand Settings")]
-    public Vector2 expandedSize = new Vector2(400, 400); // ขนาดตอนขยาย
-    private Vector2 originalSize;
-    private Transform originalParent;
-    private bool isExpanded = false;
-
-    private float originalNameFontSize;
-    private float originalClueFontSize;
-
-    private Vector2 originalNameSize;
-    private Vector2 originalClueSize;
-
     void Awake()
     {
         rectTransform = GetComponent<RectTransform>();
-        canvasGroup = gameObject.AddComponent<CanvasGroup>();
         canvas = GetComponentInParent<Canvas>();
-        originalSize = rectTransform.sizeDelta;
+        canvasGroup = gameObject.AddComponent<CanvasGroup>();
 
-        if (nameText != null) originalNameSize = nameText.rectTransform.sizeDelta;
-        if (clueText != null) originalClueSize = clueText.rectTransform.sizeDelta;
+        if (iconImage != null) iconRect = iconImage.GetComponent<RectTransform>();
+        if (nameText != null)
+        {
+            originalNameSize = nameText.rectTransform.sizeDelta;
+            originalNameFontSize = nameText.fontSize;
+        }
+        if (clueText != null)
+        {
+            originalClueSize = clueText.rectTransform.sizeDelta;
+            originalClueFontSize = clueText.fontSize;
+        }
     }
 
+    // ✅ เคลียร์ช่อง
+    public void ClearSlot()
+    {
+        currentItem = null;
+        if (nameText != null) nameText.text = "";
+        if (iconImage != null) iconImage.sprite = null;
+        if (clueText != null) clueText.text = "";
+    }
+
+    // ✅ ใช้เฉพาะตอนยังไม่ขยาย เพื่อ "เปิด"
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (!isExpanded &&
+            eventData.button == PointerEventData.InputButton.Right &&
+            RectTransformUtility.RectangleContainsScreenPoint(iconRect, eventData.position, eventData.pressEventCamera))
+        {
+            ToggleExpand();
+        }
+    }
+
+    void Update()
+    {
+        // ✅ ถ้าอยู่ในสถานะขยาย ให้กดขวาที่ไหนก็ได้เพื่อปิด
+        if (isExpanded && Input.GetMouseButtonDown(1))
+        {
+            ToggleExpand();
+        }
+    }
+
+    public bool IsEmpty() => currentItem == null;
+
+    // ✅ ใส่ของใหม่
     public void SetItem(ItemData item)
     {
         currentItem = item;
 
-        if (nameText != null)
-            nameText.text = item.itemName;
-
         if (iconImage != null)
         {
             iconImage.sprite = item.icon;
-            if (isFlashlight) iconImage.color = idleColor;
+            iconImage.color = isFlashlight ? idleColor : Color.white;
         }
 
-        if (clueText != null)
-        {
-            clueText.text = item.description;
-            clueText.gameObject.SetActive(false);
-        }
+        if (nameText != null) nameText.text = item.itemName;
+        if (clueText != null) clueText.text = item.description;
+
+        // ปกติแสดงแค่ icon
+        if (nameText != null) nameText.gameObject.SetActive(false);
+        if (clueText != null) clueText.gameObject.SetActive(false);
     }
 
+    // ✅ Drag
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (currentItem == null || isExpanded) return; // ห้าม drag ตอนขยาย
-        originalPos = rectTransform.anchoredPosition;
+        if (currentItem == null || isExpanded) return;
+
+        iconOriginalPos = iconRect.anchoredPosition;
+        iconOriginalParent = iconRect.parent;
+        savedIconSize = iconRect.sizeDelta;
+
+        iconRect.SetParent(canvas.transform, true);
         canvasGroup.blocksRaycasts = false;
 
-        if (isFlashlight && iconImage != null)
-        {
-            iconImage.color = activeColor;
-            Debug.Log("[Flashlight] ON");
-        }
+        if (isFlashlight) iconImage.color = activeColor;
     }
 
     public void OnDrag(PointerEventData eventData)
     {
         if (currentItem == null || isExpanded) return;
-        rectTransform.anchoredPosition += eventData.delta / canvas.scaleFactor;
+        iconRect.anchoredPosition += eventData.delta / canvas.scaleFactor;
     }
 
     public void OnEndDrag(PointerEventData eventData)
@@ -96,38 +160,52 @@ public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         if (currentItem == null || isExpanded) return;
         canvasGroup.blocksRaycasts = true;
 
-        Debug.Log($"[OnEndDrag] Dropping {currentItem.itemName}");
+        // กลับ parent เดิม
+        iconRect.SetParent(iconOriginalParent, true);
+        iconRect.anchoredPosition = iconOriginalPos;
+        iconRect.sizeDelta = savedIconSize;
 
-        if (isFlashlight && iconImage != null)
-        {
-            iconImage.color = idleColor;
-            Debug.Log("[Flashlight] OFF");
-        }
+        if (isFlashlight) iconImage.color = idleColor;
 
         bool used = false;
-
-        // --- 1) เช็ค combine ---
-        if (eventData.pointerEnter != null)
+        // --- 1) Combine ---
+        PointerEventData combinePointer = new PointerEventData(EventSystem.current)
         {
-            InventorySlot otherSlot = eventData.pointerEnter.GetComponentInParent<InventorySlot>();
+            position = Input.mousePosition
+        };
+        List<RaycastResult> combineResults = new List<RaycastResult>();
+        EventSystem.current.RaycastAll(combinePointer, combineResults);
+
+        foreach (var r in combineResults)
+        {
+            InventorySlot otherSlot = r.gameObject.GetComponentInParent<InventorySlot>();
             if (otherSlot != null && otherSlot != this && otherSlot.currentItem != null)
             {
+                Debug.Log($"[CombineTry] Current = {currentItem.itemName}, Other = {otherSlot.currentItem.itemName}");
+
                 var key = (currentItem.itemName, otherSlot.currentItem.itemName);
                 if (combinationRecipes.ContainsKey(key))
                 {
                     ItemData newItem = combinationRecipes[key];
-                    Debug.Log($"[Combine] {currentItem.itemName} + {otherSlot.currentItem.itemName} → {newItem.itemName}");
+                    Debug.Log($"[CombineSuccess] {currentItem.itemName} + {otherSlot.currentItem.itemName} => {newItem.itemName}");
 
-                    Destroy(otherSlot.gameObject);
-                    Destroy(gameObject);
+                    // ✅ otherSlot ได้ item ใหม่
+                    otherSlot.SetItem(newItem);
 
-                    InventoryManager.Instance.AddItem(newItem.itemName, newItem.icon, newItem.description);
+                    // ✅ ช่องปัจจุบัน clear แต่ไม่ถูกทำลาย
+                    ClearSlot();
+
                     return;
+                }
+                else
+                {
+                    Debug.Log($"[CombineFail] ไม่มีสูตรสำหรับ {currentItem.itemName} + {otherSlot.currentItem.itemName}");
                 }
             }
         }
 
-        // --- 2) ยิง Raycast บน UI ---
+
+        // --- 2) Raycast UI ---
         PointerEventData pointerData = new PointerEventData(EventSystem.current)
         {
             position = Input.mousePosition
@@ -140,14 +218,13 @@ public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
             IItemReceiver receiverUI = r.gameObject.GetComponent<IItemReceiver>();
             if (receiverUI != null)
             {
-                Debug.Log($"[OnEndDrag] Sending item: {currentItem.itemName} to {r.gameObject.name} (UI)");
                 receiverUI.OnItemUsed(currentItem.itemName);
                 used = true;
                 break;
             }
         }
 
-        // --- 3) ยิง Raycast2D world object ---
+        // --- 3) Raycast World ---
         if (!used)
         {
             Vector2 worldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -155,167 +232,96 @@ public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
 
             if (hit.collider != null)
             {
-                Debug.Log($"[OnEndDrag] Raycast hit {hit.collider.gameObject.name}");
-
                 IItemReceiver receiver = hit.collider.GetComponent<IItemReceiver>();
                 if (receiver == null)
                     receiver = hit.collider.GetComponentInParent<IItemReceiver>();
 
                 if (receiver != null)
                 {
-                    Debug.Log($"[OnEndDrag] Sending item: {currentItem.itemName} to {hit.collider.gameObject.name} (World/Parent)");
                     receiver.OnItemUsed(currentItem.itemName);
                     used = true;
                 }
-                else
-                {
-                    Debug.Log("[OnEndDrag] No IItemReceiver found on hit object or parent.");
-                }
-            }
-            else
-            {
-                Debug.Log("[OnEndDrag] Raycast hit nothing.");
-            }
-        }
-
-        // --- 4) ถ้าไม่โดนอะไรเลย → reset ---
-        rectTransform.anchoredPosition = originalPos;
-    }
-
-    void Update()
-    {
-        if (currentItem != null && Input.GetMouseButtonDown(1)) // Right Click
-        {
-            PointerEventData pointerData = new PointerEventData(EventSystem.current)
-            {
-                position = Input.mousePosition
-            };
-
-            List<RaycastResult> results = new List<RaycastResult>();
-            EventSystem.current.RaycastAll(pointerData, results);
-
-            foreach (var r in results)
-            {
-                InventorySlot slot = r.gameObject.GetComponentInParent<InventorySlot>();
-                if (slot == this)
-                {
-                    ToggleExpand();
-                    return;
-                }
             }
         }
     }
-
-    // ✅ Expand slot ไปกลางจอ
     private void ToggleExpand()
     {
         if (!isExpanded)
         {
-            // เก็บค่าปกติ
-            originalPos = rectTransform.anchoredPosition;
-            originalSize = rectTransform.sizeDelta;
-            originalParent = transform.parent;
-            if (nameText != null) originalNameFontSize = nameText.fontSize;
-            if (clueText != null) originalClueFontSize = clueText.fontSize;
+            // ✅ เก็บค่าต้นฉบับของ slot
+            slotOriginalParent = rectTransform.parent;
+            slotOriginalPos = rectTransform.anchoredPosition;
+            slotOriginalSize = rectTransform.sizeDelta;
+            slotOriginalIndex = rectTransform.GetSiblingIndex();
+            slotOriginalAnchorMin = rectTransform.anchorMin;
+            slotOriginalAnchorMax = rectTransform.anchorMax;
+            slotOriginalPivot = rectTransform.pivot;
 
-            // ย้ายไป Canvas root
-            transform.SetParent(canvas.transform, true);
-
-            // ตั้ง anchor/pivot ให้อยู่กลาง
+            // ✅ ย้าย slot ไปกลางจอ + Offset ที่กำหนด
+            rectTransform.SetParent(canvas.transform, true);
             rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
             rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
             rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            rectTransform.anchoredPosition = Vector2.zero;
-
-            // 👉 ใหญ่ 80% ของจอ
-            float targetWidth = Screen.width * 0.8f;
-            float targetHeight = Screen.height * 0.8f;
-            rectTransform.sizeDelta = new Vector2(targetWidth, targetHeight);
-
+            rectTransform.anchoredPosition = slotExpandOffset;
+            rectTransform.sizeDelta = slotExpandSize;
             rectTransform.SetAsLastSibling();
 
-            // --- NameText (บนสุด) ---
+            // ✅ ปรับ icon
+            if (iconRect != null)
+            {
+                savedIconSize = iconRect.sizeDelta;
+                iconRect.sizeDelta = iconExpandSize;
+                iconRect.anchoredPosition = Vector2.zero;
+            }
+
+            // ✅ แสดงชื่อ
             if (nameText != null)
             {
                 nameText.gameObject.SetActive(true);
-                nameText.fontSize = originalNameFontSize * 3f;
-                nameText.rectTransform.anchorMin = new Vector2(0f, 0.85f);
-                nameText.rectTransform.anchorMax = new Vector2(1f, 1f);
+                nameText.fontSize = nameExpandFontSize;
+                nameText.alignment = TextAlignmentOptions.Center;
+                nameText.rectTransform.anchorMin = nameAnchorMin;
+                nameText.rectTransform.anchorMax = nameAnchorMax;
                 nameText.rectTransform.offsetMin = Vector2.zero;
                 nameText.rectTransform.offsetMax = Vector2.zero;
-                nameText.alignment = TextAlignmentOptions.Center;
             }
 
-            // --- IconImage (กลาง) ---
-            if (iconImage != null)
-            {
-                iconImage.rectTransform.anchorMin = new Vector2(0f, 0.25f);
-                iconImage.rectTransform.anchorMax = new Vector2(1f, 0.85f);
-                iconImage.rectTransform.offsetMin = Vector2.zero;
-                iconImage.rectTransform.offsetMax = Vector2.zero;
-                iconImage.preserveAspect = true;
-                iconImage.gameObject.SetActive(true);
-            }
-
-            // --- ClueText (ล่างสุด) ---
+            // ✅ แสดง clue
             if (clueText != null)
             {
                 clueText.gameObject.SetActive(true);
-                clueText.fontSize = originalClueFontSize * 2f;
-                clueText.rectTransform.anchorMin = new Vector2(0f, 0f);
-                clueText.rectTransform.anchorMax = new Vector2(1f, 0.25f);
+                clueText.fontSize = clueExpandFontSize;
+                clueText.alignment = TextAlignmentOptions.Center;
+                clueText.rectTransform.anchorMin = clueAnchorMin;
+                clueText.rectTransform.anchorMax = clueAnchorMax;
                 clueText.rectTransform.offsetMin = Vector2.zero;
                 clueText.rectTransform.offsetMax = Vector2.zero;
-                clueText.alignment = TextAlignmentOptions.Center;
             }
 
             isExpanded = true;
-            Debug.Log($"[Expand] {currentItem.itemName} enlarged to BIG center");
         }
         else
         {
-            // กลับค่าปกติ
-            transform.SetParent(originalParent, true);
-            rectTransform.anchorMin = new Vector2(0, 1);
-            rectTransform.anchorMax = new Vector2(0, 1);
-            rectTransform.pivot = new Vector2(0, 1);
-            rectTransform.anchoredPosition = originalPos;
-            rectTransform.sizeDelta = originalSize;
+            // ✅ คืนค่า slot กลับตำแหน่งเดิม
+            rectTransform.SetParent(slotOriginalParent, true);
+            rectTransform.SetSiblingIndex(slotOriginalIndex);
+            rectTransform.anchorMin = slotOriginalAnchorMin;
+            rectTransform.anchorMax = slotOriginalAnchorMax;
+            rectTransform.pivot = slotOriginalPivot;
+            rectTransform.anchoredPosition = slotOriginalPos;
+            rectTransform.sizeDelta = slotOriginalSize;
 
-            // reset Name
-            if (nameText != null)
+            // คืน icon
+            if (iconRect != null)
             {
-                nameText.fontSize = originalNameFontSize;
-                nameText.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-                nameText.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-                nameText.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-                nameText.rectTransform.sizeDelta = originalNameSize; // ✅ คืนขนาดเดิม
-                nameText.alignment = TextAlignmentOptions.Left;
+                iconRect.sizeDelta = savedIconSize;
             }
 
-            // reset Clue
-            if (clueText != null)
-            {
-                clueText.fontSize = originalClueFontSize;
-                clueText.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-                clueText.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-                clueText.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-                clueText.rectTransform.sizeDelta = originalClueSize; // ✅ คืนขนาดเดิม
-                clueText.alignment = TextAlignmentOptions.Left;
-                clueText.gameObject.SetActive(false);
-            }
-
-            // reset Icon
-            if (iconImage != null)
-            {
-                iconImage.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-                iconImage.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-                iconImage.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-                iconImage.rectTransform.sizeDelta = new Vector2(100, 100);
-            }
+            // ซ่อนชื่อ+clue
+            if (nameText != null) nameText.gameObject.SetActive(false);
+            if (clueText != null) clueText.gameObject.SetActive(false);
 
             isExpanded = false;
-            Debug.Log($"[Expand] {currentItem.itemName} restored");
         }
     }
 
