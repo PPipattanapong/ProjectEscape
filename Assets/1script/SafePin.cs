@@ -11,12 +11,16 @@ public class SafePin : MonoBehaviour
     public GameObject keyReward;
 
     [Header("UI Panel")]
-    public GameObject safePanel;   // drag your SafePanel here
+    public GameObject safePanel;
 
     [Header("Camera Settings")]
     public Camera mainCamera;
     public float zoomSize = 2f;
     public float zoomDuration = 1f;
+
+    [Header("Penalty Settings")]
+    [Tooltip("จำนวนวินาทีที่จะลดเมื่อกรอกรหัสผิด")]
+    public float wrongCodePenalty = 10f;  // ✅ ตั้งค่าได้ใน Inspector
 
     private string input = "";
     private bool solved = false;
@@ -119,8 +123,10 @@ public class SafePin : MonoBehaviour
         mainCamera.transform.position = originalCamPos;
         mainCamera.orthographicSize = originalCamSize;
 
-        isZooming = false;
+        yield return new WaitForSeconds(0.15f);
         if (camController != null) camController.enabled = true;
+
+        isZooming = false;
     }
 
     public void PressNumber(string num)
@@ -137,7 +143,6 @@ public class SafePin : MonoBehaviour
         if (input == correctPin)
         {
             solved = true;
-
             Debug.Log("Safe opened!");
 
             if (safeRenderer != null)
@@ -146,43 +151,42 @@ public class SafePin : MonoBehaviour
             if (centerLight != null)
                 centerLight.SetGreen();
 
-            // ปิด panel ทันที
             if (safePanel != null)
                 safePanel.SetActive(false);
 
-            // ✨ keyReward เริ่ม fade-in ทันที หลังรหัสถูก
             if (keyReward != null)
                 StartCoroutine(FadeInReward(keyReward, 2f));
 
-            // เริ่ม sequence หลัง solved
             StartCoroutine(HandleAfterSolved());
-
             input = "";
         }
         else
         {
             pinDisplay.text = "Wrong code!";
             input = "";
+
+            // 🔻 ลดเวลาตามที่ตั้งไว้ใน Inspector
+            WallCountdownWithImages timer = FindObjectOfType<WallCountdownWithImages>();
+            if (timer != null)
+            {
+                timer.ReduceTime(wrongCodePenalty);
+                Debug.Log($"❌ Wrong code! Reduced {wrongCodePenalty} seconds.");
+            }
         }
     }
 
     private IEnumerator HandleAfterSolved()
     {
-        // 1) Zoom out กลับห้อง
         yield return StartCoroutine(ZoomOutAndClose());
-
-        // 2) Fade out safe
         yield return StartCoroutine(FadeOutAndDisable());
     }
 
     private IEnumerator FadeInReward(GameObject obj, float duration)
     {
         obj.SetActive(true);
-
         SpriteRenderer sr = obj.GetComponent<SpriteRenderer>();
         if (sr == null) yield break;
 
-        // reset alpha = 0 ก่อน fade
         Color c = sr.color;
         sr.color = new Color(c.r, c.g, c.b, 0f);
 
@@ -215,7 +219,6 @@ public class SafePin : MonoBehaviour
         }
 
         safeRenderer.color = new Color(originalColor.r, originalColor.g, originalColor.b, 0f);
-
         gameObject.SetActive(false);
     }
 

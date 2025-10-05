@@ -7,21 +7,23 @@ using UnityEngine.UI;
 public class Readdrop : MonoBehaviour
 {
     [Header("UI")]
-    public TextMeshProUGUI pageText;   // โชว์ว่าอยู่หน้าอะไร
-    public TextMeshProUGUI hintText;   // เนื้อหาในหน้านั้น
-    public GameObject panel;           // Panel หลักของ Puzzle
+    public TextMeshProUGUI pageTextLeft;
+    public TextMeshProUGUI pageTextRight;
+    public TextMeshProUGUI hintTextLeft;
+    public TextMeshProUGUI hintTextRight;
+    public GameObject panel;
 
     [Header("Book Pages")]
     [TextArea(2, 5)]
-    public string[] pages;             // เนื้อหาของแต่ละหน้า
+    public string[] pages;
     private int currentPage = 0;
 
     [Header("Rewards")]
-    public GameObject noteLeft;        // ของรางวัล
-    public LightController doorLight;  // ไฟประตู (optional)
+    public GameObject noteLeft;
+    public LightController doorLight;
 
     [Header("Fade Settings")]
-    public float fadeDuration = 1.5f;  // เวลา fade in/out
+    public float fadeDuration = 1.5f;
 
     private bool solved = false;
     private bool sawLastPage = false;
@@ -43,17 +45,13 @@ public class Readdrop : MonoBehaviour
 
     void Update()
     {
-        // ❌ ไม่ต้องไปปิด panel ใน Update หลัง solved
         if (!solved && panel != null && panel.activeSelf && Input.GetMouseButtonDown(0))
         {
             if (!IsPointerOverUIObject(panel))
-            {
                 ClosePanel();
-            }
         }
     }
 
-    // เปิด puzzle
     public void OpenPuzzle()
     {
         if (solved || panel == null) return;
@@ -66,22 +64,18 @@ public class Readdrop : MonoBehaviour
     private IEnumerator RefreshPageAfterOpen()
     {
         yield return new WaitForEndOfFrame();
-        ShowPage();
-
-        if (hintText != null) hintText.ForceMeshUpdate();
-        if (pageText != null) pageText.ForceMeshUpdate();
+        ShowPagesInstant();
     }
 
     public void NextPage()
     {
         if (solved) return;
 
-        if (currentPage < pages.Length - 1)
+        if (currentPage + 2 < pages.Length)
         {
-            currentPage++;
-            ShowPage();
-
-            if (currentPage == pages.Length - 1)
+            currentPage += 2;
+            ShowPagesInstant(); // ✅ เปลี่ยนหน้าแบบไม่เฟด
+            if (currentPage + 1 >= pages.Length - 1)
                 sawLastPage = true;
         }
     }
@@ -90,23 +84,40 @@ public class Readdrop : MonoBehaviour
     {
         if (solved) return;
 
-        if (currentPage > 0)
+        if (currentPage - 2 >= 0)
         {
-            currentPage--;
-            ShowPage();
-
-            if (sawLastPage && currentPage == 1)
+            currentPage -= 2;
+            ShowPagesInstant(); // ✅ เปลี่ยนหน้าแบบไม่เฟด
+            if (sawLastPage && currentPage <= 0)
                 PuzzleSolved();
         }
     }
 
-    private void ShowPage()
+    private void ShowPagesInstant()
     {
-        if (pageText != null)
-            pageText.text = $"Page {currentPage + 1} / {pages.Length}";
+        // ซ้าย
+        if (pageTextLeft != null)
+            pageTextLeft.text = $"{currentPage + 1}/{pages.Length}";
 
-        if (hintText != null && currentPage < pages.Length)
-            hintText.text = pages[currentPage];
+        if (hintTextLeft != null && currentPage < pages.Length)
+            hintTextLeft.text = pages[currentPage];
+
+        // ขวา
+        if (pageTextRight != null)
+        {
+            if (currentPage + 1 < pages.Length)
+                pageTextRight.text = $"{currentPage + 2}/{pages.Length}";
+            else
+                pageTextRight.text = "-";
+        }
+
+        if (hintTextRight != null)
+        {
+            if (currentPage + 1 < pages.Length)
+                hintTextRight.text = pages[currentPage + 1];
+            else
+                hintTextRight.text = "";
+        }
     }
 
     private void PuzzleSolved()
@@ -129,7 +140,6 @@ public class Readdrop : MonoBehaviour
     {
         noteObj.SetActive(true);
 
-        // เตรียม Note (SpriteRenderer)
         SpriteRenderer sr = noteObj.GetComponent<SpriteRenderer>();
         Color noteColor = Color.white;
         if (sr != null)
@@ -139,7 +149,6 @@ public class Readdrop : MonoBehaviour
             sr.color = noteColor;
         }
 
-        // เตรียม Panel (Image)
         Image img = panelObj.GetComponent<Image>();
         Color panelColor = Color.white;
         if (img != null)
@@ -149,7 +158,6 @@ public class Readdrop : MonoBehaviour
             img.color = panelColor;
         }
 
-        // Fade พร้อมกัน
         float t = 0f;
         while (t < duration)
         {

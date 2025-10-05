@@ -18,24 +18,27 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
     public Color solvedColor = new Color(0f, 1f, 0.51f);
     public float fadeDuration = 2f;
 
+    [Header("Drag Settings")]
+    public float dragFollowSpeed = 25f;
+    public float checkRadius = 0.15f;
+
     [Header("Requirements")]
     public string requiredItem = "Screwdriver";
 
+    [Header("Penalty Settings")]
+    [Tooltip("จำนวนวินาทีที่จะลดเมื่อผู้เล่นลากออกนอกเส้น")]
+    public float outOfPathPenalty = 10f; // ✅ ตั้งค่าได้จาก Inspector
+
     private bool isDragging = false;
     private bool solved = false;
-    private bool startedOnStart = false;
     private bool activated = false;
 
-    private Collider2D fieldCollider;
     private Collider2D startCollider;
-    private List<Collider2D> pathColliders = new List<Collider2D>();
     private Collider2D endCollider;
-
-    private int currentPathIndex = 0;
+    private Vector3 startOriginalPos;
 
     void Start()
     {
-        // ซ่อนทั้งหมดตอนเริ่ม
         fieldObject.SetActive(false);
         startObject.SetActive(false);
         foreach (var pathObj in pathObjects) pathObj.SetActive(false);
@@ -45,15 +48,9 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         if (bgRenderer != null)
             bgRenderer.color = startColor;
 
-        // ดึง collider
-        fieldCollider = fieldObject.GetComponent<Collider2D>();
         startCollider = startObject.GetComponent<Collider2D>();
-        foreach (var pathObj in pathObjects)
-        {
-            var col = pathObj.GetComponent<Collider2D>();
-            if (col != null) pathColliders.Add(col);
-        }
         endCollider = endObject.GetComponent<Collider2D>();
+        startOriginalPos = startObject.transform.position;
     }
 
     public void OnItemUsed(string itemName)
@@ -67,9 +64,9 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
             startObject.SetActive(true);
             foreach (var pathObj in pathObjects) pathObj.SetActive(true);
             endObject.SetActive(true);
+            startObject.transform.position = startOriginalPos;
 
-            currentPathIndex = 0;
-            startedOnStart = false;
+            Debug.Log("[WirePuzzle] Activated with " + itemName);
         }
     }
 
@@ -77,96 +74,108 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
     {
         if (solved || !activated) return;
 
-        Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mouseWorldPos.z = 0f;
 
         if (Input.GetMouseButtonDown(0))
         {
-            if (startCollider.OverlapPoint(mousePos))
+            if (startCollider.OverlapPoint(mouseWorldPos))
             {
                 isDragging = true;
-                startedOnStart = true;
-                currentPathIndex = 0;
-            }
-            else
-            {
-                isDragging = false;
-                startedOnStart = false;
+                Debug.Log("[WirePuzzle] Start dragging");
             }
         }
 
-        if (Input.GetMouseButtonUp(0)) isDragging = false;
-
-        if (isDragging && startedOnStart)
+        if (Input.GetMouseButtonUp(0))
         {
-            // ออกนอกสนาม → reset
-            if (!fieldCollider.OverlapPoint(mousePos))
+            isDragging = false;
+        }
+
+        if (isDragging)
+        {
+            startObject.transform.position = Vector3.Lerp(
+                startObject.transform.position,
+                mouseWorldPos,
+                Time.deltaTime * dragFollowSpeed
+            );
+        }
+
+        Vector3 pos = startObject.transform.position;
+
+        // ✅ ตรวจว่าอยู่บน path จริงไหม
+        bool touchingRed = false;
+        foreach (var pathObj in pathObjects)
+        {
+            if (pathObj == null) continue;
+            Collider2D col = pathObj.GetComponent<Collider2D>();
+            if (col == null) continue;
+
+            bool overlap = col.OverlapPoint(pos) ||
+                           (Vector2.Distance(pos, col.bounds.ClosestPoint(pos)) < checkRadius);
+
+            if (overlap)
             {
-                ResetPuzzle();
-                return;
+                touchingRed = true;
+                break;
+            }
+        }
+
+        // ❌ ถ้าออกจาก path ให้รีเซ็ตและลดเวลา
+        if (!touchingRed)
+        {
+            Debug.LogWarning("[WirePuzzle] ❌ Out of red — Reset!");
+
+            // 🔻 ลดเวลาใน WallCountdownWithImages ถ้ามี
+            WallCountdownWithImages timer = FindObjectOfType<WallCountdownWithImages>();
+            if (timer != null)
+            {
+                timer.ReduceTime(outOfPathPenalty);
             }
 
-            // ถ้าอยู่ใน field แต่ไม่ใช่ path / start / end → reset
-            bool onSpecial = startCollider.OverlapPoint(mousePos) || endCollider.OverlapPoint(mousePos);
-            bool onPath = false;
-            foreach (var col in pathColliders)
-            {
-                if (col.OverlapPoint(mousePos)) { onPath = true; break; }
-            }
+            ResetPuzzle();
+            return;
+        }
 
-            if (!onSpecial && !onPath)
-            {
-                ResetPuzzle();
-                return;
-            }
-
-            // ผ่าน path ทีละอัน
-            if (currentPathIndex < pathColliders.Count)
-            {
-                if (pathColliders[currentPathIndex].OverlapPoint(mousePos))
-                {
-                    currentPathIndex++;
-                }
-            }
-
-            // จบ puzzle
-            if (currentPathIndex >= pathColliders.Count && endCollider.OverlapPoint(mousePos))
-            {
-                PuzzleSolved();
-            }
+        // ✅ ผ่านเมื่อถึง end
+        if (endCollider.OverlapPoint(pos))
+        {
+            Debug.Log("[WirePuzzle] 🎉 Reached END");
+            PuzzleSolved();
         }
     }
 
     void ResetPuzzle()
     {
         isDragging = false;
-        startedOnStart = false;
-        currentPathIndex = 0;
-        activated = false; // ต้องใช้ item ใหม่อีกครั้ง
+        activated = false;
 
         fieldObject.SetActive(false);
         startObject.SetActive(false);
         foreach (var pathObj in pathObjects) pathObj.SetActive(false);
         endObject.SetActive(false);
+        startObject.transform.position = startOriginalPos;
+
+        Debug.Log("[WirePuzzle] Puzzle Reset complete");
     }
 
     void PuzzleSolved()
     {
         isDragging = false;
         solved = true;
-
         doorLight.SetGreen();
+
         fieldObject.SetActive(false);
         startObject.SetActive(false);
-        foreach (var pathObj in pathObjects) pathObj.SetActive(false);
+        foreach (var pathObj in pathObjects)
+            pathObj.SetActive(false);
         endObject.SetActive(false);
 
-        // เคลียร์ไขควง
-        var slots = FindObjectsOfType<InventorySlot>();
-        foreach (var slot in slots)
+        foreach (var slot in FindObjectsOfType<InventorySlot>())
         {
             if (slot.currentItem != null && slot.currentItem.itemName == requiredItem)
             {
                 slot.ClearSlot();
+                Debug.Log("[WirePuzzle] Removed required item");
                 break;
             }
         }
@@ -181,8 +190,7 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         while (t < fadeDuration)
         {
             t += Time.deltaTime;
-            float progress = t / fadeDuration;
-            bgRenderer.color = Color.Lerp(startColor, solvedColor, progress);
+            bgRenderer.color = Color.Lerp(startColor, solvedColor, t / fadeDuration);
             yield return null;
         }
 
@@ -208,7 +216,15 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
             sr.color = new Color(c.r, c.g, c.b, alpha);
             yield return null;
         }
-
         sr.color = new Color(c.r, c.g, c.b, 1f);
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        if (startObject != null)
+        {
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(startObject.transform.position, checkRadius);
+        }
     }
 }

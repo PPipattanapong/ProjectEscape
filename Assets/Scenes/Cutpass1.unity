@@ -458,7 +458,7 @@ MonoBehaviour:
   - 'Alien: Enter. The second trial awaits.'
   - I take a deep breath, steady my resolve, and step into the unknown.
   typeSpeed: 0.03
-  nextSceneName: Room2
+  nextSceneName: RealR2
   imgPant: {fileID: 435613477}
   imgLight: {fileID: 1777047003}
   imgHand: {fileID: 6229554}

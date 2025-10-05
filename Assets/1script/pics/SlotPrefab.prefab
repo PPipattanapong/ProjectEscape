@@ -176,12 +176,13 @@ MonoBehaviour:
   slotExpandOffset: {x: 0, y: 50}
   slotExpandSize: {x: 1000, y: 660}
   iconExpandSize: {x: 500, y: 250}
+  iconMaxHeightRatio: 0.65
   nameExpandFontSize: 45
   clueExpandFontSize: 40
-  nameAnchorMin: {x: 0, y: 0.7}
+  nameAnchorMin: {x: 0, y: 0.75}
   nameAnchorMax: {x: 1, y: 1}
   clueAnchorMin: {x: 0, y: 0}
-  clueAnchorMax: {x: 1, y: 0.2}
+  clueAnchorMax: {x: 1, y: 0.15}
   idleColor: {r: 1, g: 1, b: 1, a: 1}
   activeColor: {r: 0, g: 1, b: 1, a: 1}
 --- !u!1 &6687228876457766180

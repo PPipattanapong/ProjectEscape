@@ -21,8 +21,8 @@ EditorBuildSettings:
     path: Assets/Scenes/Cutpass1.unity
     guid: 204c8958bbd3ba74a86061ce7d1762b7
   - enabled: 1
-    path: Assets/Scenes/Room2.unity
-    guid: 33d455ff7f0d64a4087e045ff056b20d
+    path: Assets/Scenes/RealR2.unity
+    guid: 975dd6cba0ac8bb44adfc2bbea716bb8
   - enabled: 1
     path: Assets/Scenes/Room3.unity
     guid: c2d0ed445a25c5843952f476991b2fee

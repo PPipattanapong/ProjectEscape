@@ -45,7 +45,8 @@ public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
 
     [Header("Expand Settings")]
     public Vector2 slotExpandSize = new Vector2(1000, 600);   // ขนาด slot ตอนขยาย
-    public Vector2 iconExpandSize = new Vector2(500, 250);    // ขนาด icon ตอนขยาย
+    public Vector2 iconExpandSize = new Vector2(500, 250);    // ขนาดไอคอนเป้าหมายตอนขยาย (ใช้แค่แนวอ้างอิง)
+    public float iconMaxHeightRatio = 0.7f;                   // ✅ สัดส่วนความสูงสูงสุดของไอคอนต่อ slot
     public float nameExpandFontSize = 48f;                    // ขนาดฟอนต์ชื่อ
     public float clueExpandFontSize = 28f;                    // ขนาดฟอนต์คำใบ้
 
@@ -168,6 +169,7 @@ public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         if (isFlashlight) iconImage.color = idleColor;
 
         bool used = false;
+
         // --- 1) Combine ---
         PointerEventData combinePointer = new PointerEventData(EventSystem.current)
         {
@@ -203,7 +205,6 @@ public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
                 }
             }
         }
-
 
         // --- 2) Raycast UI ---
         PointerEventData pointerData = new PointerEventData(EventSystem.current)
@@ -244,6 +245,7 @@ public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
             }
         }
     }
+
     private void ToggleExpand()
     {
         if (!isExpanded)
@@ -266,11 +268,22 @@ public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
             rectTransform.sizeDelta = slotExpandSize;
             rectTransform.SetAsLastSibling();
 
-            // ✅ ปรับ icon
-            if (iconRect != null)
+            // ✅ ปรับ icon โดยรักษาอัตราส่วน
+            if (iconRect != null && iconImage != null && iconImage.sprite != null)
             {
                 savedIconSize = iconRect.sizeDelta;
-                iconRect.sizeDelta = iconExpandSize;
+
+                float spriteRatio = (float)iconImage.sprite.rect.width / iconImage.sprite.rect.height;
+                float targetWidth = iconExpandSize.x;
+                float targetHeight = targetWidth / spriteRatio;
+
+                if (targetHeight > slotExpandSize.y * iconMaxHeightRatio)
+                {
+                    targetHeight = slotExpandSize.y * iconMaxHeightRatio;
+                    targetWidth = targetHeight * spriteRatio;
+                }
+
+                iconRect.sizeDelta = new Vector2(targetWidth, targetHeight);
                 iconRect.anchoredPosition = Vector2.zero;
             }
 
@@ -328,7 +341,7 @@ public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     public static void InitRecipes()
     {
         Sprite combinedSprite = Resources.Load<Sprite>("Icons/NoteCombined");
-        var combinedItem = new ItemData("NoteCombined", combinedSprite, "The scraps align... Code: 4567.");
+        var combinedItem = new ItemData("NoteCombined", combinedSprite, "Looks like the notes form a password for something.");
 
         combinationRecipes.Add(("NoteLeft", "NoteRight"), combinedItem);
         combinationRecipes.Add(("NoteRight", "NoteLeft"), combinedItem);

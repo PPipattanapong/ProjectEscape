@@ -6,11 +6,14 @@ TagManager:
   tags:
   - DestroyTarget
   - Wall
+  - Field
+  - StartPoint
+  - EndPoint
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - FieldLayer
   - Water
   - UI
   - 

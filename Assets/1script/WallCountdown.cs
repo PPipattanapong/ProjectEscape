@@ -34,6 +34,7 @@ public class WallCountdownWithImages : MonoBehaviour
     [Header("Scene Settings")]
     public string nextSceneName; // 👉 ตั้งชื่อ Scene ที่จะโหลดใน Inspector
 
+
     private int currentImageIndex = 0;
     private float nextChangeTime;
     private bool isFading = false;
@@ -222,5 +223,19 @@ public class WallCountdownWithImages : MonoBehaviour
 
         GUI.color = Color.red;
         GUI.Label(new Rect(aged.x, Screen.height - aged.y, 100, 20), "AGED");
+    }
+
+    // 👇 เพิ่มฟังก์ชันลดเวลาไว้ท้ายสุด
+    public void ReduceTime(float amount)
+    {
+        countdownTime -= amount;
+        if (countdownTime < 0) countdownTime = 0;
+
+        int m = Mathf.FloorToInt(countdownTime / 60);
+        int s = Mathf.FloorToInt(countdownTime % 60);
+        if (clockText != null)
+            clockText.text = string.Format("{0:00}:{1:00}", m, s);
+
+        Debug.Log($"⏰ Time reduced by {amount} seconds → Remaining: {countdownTime}");
     }
 }
