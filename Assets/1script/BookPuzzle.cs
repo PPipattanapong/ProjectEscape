@@ -23,6 +23,14 @@ public class BookPuzzle : MonoBehaviour
     // 📌 ใช้สำหรับเลือกเล่มแรก
     [HideInInspector] public BookClick selectedBook;
 
+    [Header("Book Highlight")]
+    [Tooltip("สีของหนังสือที่ถูกเลือก")]
+    public Color selectedColor = Color.yellow;
+
+    [Tooltip("สีเดิมของหนังสือทั้งหมด")]
+    public Color normalColor = Color.white;
+
+
     void Start()
     {
         // วางหนังสือตาม slot เริ่มต้น

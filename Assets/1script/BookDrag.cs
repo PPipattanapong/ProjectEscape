@@ -8,13 +8,24 @@ public class BookClick : MonoBehaviour
     private SpriteRenderer sr;
     private Color originalColor;
 
+    void Awake()
+    {
+        sr = GetComponent<SpriteRenderer>();
+        if (sr != null)
+            originalColor = sr.color;
+    }
+
     public void Setup(BookPuzzle p, int i)
     {
         puzzle = p;
         index = i;
-        sr = GetComponent<SpriteRenderer>();
+
+        // ตั้งสีเริ่มต้นให้ตรงกับค่า normalColor ใน Inspector
         if (sr != null)
-            originalColor = sr.color;
+        {
+            originalColor = p.normalColor;
+            sr.color = p.normalColor;
+        }
     }
 
     void OnMouseDown()
@@ -27,13 +38,13 @@ public class BookClick : MonoBehaviour
 
     public void Highlight()
     {
-        if (sr != null)
-            sr.color = Color.white;
+        if (sr != null && puzzle != null)
+            sr.color = puzzle.selectedColor; // ✅ ใช้สีจาก Inspector
     }
 
     public void ResetColor()
     {
-        if (sr != null)
-            sr.color = originalColor;
+        if (sr != null && puzzle != null)
+            sr.color = puzzle.normalColor; // ✅ คืนเป็นสีเดิมที่ตั้งไว้
     }
 }

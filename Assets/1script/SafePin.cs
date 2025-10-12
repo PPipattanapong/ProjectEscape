@@ -2,6 +2,7 @@
 using TMPro;
 using System.Collections;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 public class SafePin : MonoBehaviour
 {
@@ -9,6 +10,10 @@ public class SafePin : MonoBehaviour
     public string correctPin = "4567";
     public TextMeshProUGUI pinDisplay;
     public GameObject keyReward;
+
+    [Header("Requirement")]
+    [Tooltip("ชื่อไอเท็มที่ต้องมีใน Inventory ก่อนถึงจะใช้เซฟได้")]
+    public string requiredItemName;
 
     [Header("UI Panel")]
     public GameObject safePanel;
@@ -20,7 +25,13 @@ public class SafePin : MonoBehaviour
 
     [Header("Penalty Settings")]
     [Tooltip("จำนวนวินาทีที่จะลดเมื่อกรอกรหัสผิด")]
-    public float wrongCodePenalty = 10f;  // ✅ ตั้งค่าได้ใน Inspector
+    public float wrongCodePenalty = 10f;
+
+    [Header("Flash Effect")]
+    [Tooltip("Panel สีแดงที่จะใช้ flash ตอนกรอกรหัสผิด")]
+    public GameObject damageFlashPanel; // ใช้ panel สีแดงเหมือน WirePuzzle
+    public float flashDuration = 0.3f;
+    public float flashMaxAlpha = 0.6f;
 
     private string input = "";
     private bool solved = false;
@@ -28,10 +39,8 @@ public class SafePin : MonoBehaviour
     public LightController centerLight;
 
     private bool isZooming = false;
-
     private Vector3 originalCamPos;
     private float originalCamSize;
-
     private RoomCameraController camController;
 
     void Start()
@@ -49,6 +58,9 @@ public class SafePin : MonoBehaviour
         originalCamSize = mainCamera.orthographicSize;
 
         camController = mainCamera.GetComponent<RoomCameraController>();
+
+        if (damageFlashPanel != null)
+            damageFlashPanel.SetActive(false);
     }
 
     void Update()
@@ -67,7 +79,7 @@ public class SafePin : MonoBehaviour
 
     void OnMouseDown()
     {
-        if (!solved && safePanel != null && !isZooming)
+        if (!solved && !isZooming && safePanel != null)
             StartCoroutine(ZoomInAndOpen());
     }
 
@@ -90,7 +102,6 @@ public class SafePin : MonoBehaviour
 
             mainCamera.transform.position = Vector3.Lerp(startPos, targetPos, t);
             mainCamera.orthographicSize = Mathf.Lerp(startSize, zoomSize, t);
-
             yield return null;
         }
 
@@ -116,7 +127,6 @@ public class SafePin : MonoBehaviour
 
             mainCamera.transform.position = Vector3.Lerp(startPos, originalCamPos, t);
             mainCamera.orthographicSize = Mathf.Lerp(startSize, originalCamSize, t);
-
             yield return null;
         }
 
@@ -132,7 +142,19 @@ public class SafePin : MonoBehaviour
     public void PressNumber(string num)
     {
         if (solved) return;
-        input += num;
+
+        if (input.Length < correctPin.Length)
+        {
+            input += num;
+            pinDisplay.text = input;
+        }
+    }
+
+    public void PressBackspace()
+    {
+        if (solved || string.IsNullOrEmpty(input)) return;
+
+        input = input.Substring(0, input.Length - 1);
         pinDisplay.text = input;
     }
 
@@ -142,8 +164,16 @@ public class SafePin : MonoBehaviour
 
         if (input == correctPin)
         {
+            if (!HasRequiredItem())
+            {
+                Debug.Log("⚠️ Requirement not passed!");
+                StartCoroutine(ShowTemporaryMessage("Requirement not met!", 1.5f));
+                input = "";
+                return;
+            }
+
             solved = true;
-            Debug.Log("Safe opened!");
+            Debug.Log("✅ Safe opened!");
 
             if (safeRenderer != null)
                 safeRenderer.sortingOrder = 0;
@@ -162,17 +192,88 @@ public class SafePin : MonoBehaviour
         }
         else
         {
-            pinDisplay.text = "Wrong code!";
-            input = "";
+            Debug.Log("❌ Wrong code!");
+            StartCoroutine(ShowTemporaryMessage("Wrong code!", 1.5f, Color.red));
 
-            // 🔻 ลดเวลาตามที่ตั้งไว้ใน Inspector
+            // 🔻 Flash Effect ตอนรหัสผิด
+            if (damageFlashPanel != null)
+                StartCoroutine(FlashDamagePanel());
+
             WallCountdownWithImages timer = FindObjectOfType<WallCountdownWithImages>();
             if (timer != null)
             {
                 timer.ReduceTime(wrongCodePenalty);
-                Debug.Log($"❌ Wrong code! Reduced {wrongCodePenalty} seconds.");
+                Debug.Log($"Reduced {wrongCodePenalty} seconds.");
             }
+
+            input = "";
         }
+    }
+
+    private bool HasRequiredItem()
+    {
+        if (string.IsNullOrEmpty(requiredItemName)) return true;
+
+        InventoryManager inv = FindObjectOfType<InventoryManager>();
+        if (inv == null) return false;
+
+        return inv.HasItem(requiredItemName);
+    }
+
+    private IEnumerator ShowTemporaryMessage(string message, float duration, Color? colorOverride = null)
+    {
+        if (pinDisplay == null) yield break;
+
+        pinDisplay.text = message;
+        Color originalColor = pinDisplay.color;
+        if (colorOverride != null)
+            pinDisplay.color = colorOverride.Value;
+
+        yield return new WaitForSeconds(duration);
+
+        float fade = 0.5f;
+        float t = 0f;
+        while (t < fade)
+        {
+            t += Time.deltaTime;
+            pinDisplay.color = new Color(pinDisplay.color.r, pinDisplay.color.g, pinDisplay.color.b, Mathf.Lerp(1f, 0f, t / fade));
+            yield return null;
+        }
+
+        pinDisplay.color = originalColor;
+        pinDisplay.text = "";
+    }
+
+    private IEnumerator FlashDamagePanel()
+    {
+        damageFlashPanel.SetActive(true);
+        Image img = damageFlashPanel.GetComponent<Image>();
+        if (img == null) yield break;
+
+        Color baseColor = img.color;
+        float t = 0f;
+
+        // Fade In (เร็ว)
+        while (t < flashDuration * 0.3f)
+        {
+            t += Time.deltaTime;
+            float a = Mathf.Lerp(0f, flashMaxAlpha, t / (flashDuration * 0.3f));
+            img.color = new Color(baseColor.r, baseColor.g, baseColor.b, a);
+            yield return null;
+        }
+
+        // Fade Out (ช้า)
+        t = 0f;
+        while (t < flashDuration * 0.7f)
+        {
+            t += Time.deltaTime;
+            float a = Mathf.Lerp(flashMaxAlpha, 0f, t / (flashDuration * 0.7f));
+            img.color = new Color(baseColor.r, baseColor.g, baseColor.b, a);
+            yield return null;
+        }
+
+        damageFlashPanel.SetActive(false);
+        img.color = new Color(baseColor.r, baseColor.g, baseColor.b, 0f);
     }
 
     private IEnumerator HandleAfterSolved()

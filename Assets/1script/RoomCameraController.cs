@@ -46,8 +46,8 @@ public class RoomCameraController : MonoBehaviour
     {
         if (roomText == null) return;
 
-        if (target == leftPos) roomText.text = "Left";
-        else if (target == middlePos) roomText.text = "Middle";
-        else if (target == rightPos) roomText.text = "Right";
+        if (target == leftPos) roomText.text = "LEFT";
+        else if (target == middlePos) roomText.text = "MIDDLE";
+        else if (target == rightPos) roomText.text = "RIGHT";
     }
 }

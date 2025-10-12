@@ -43,6 +43,14 @@ public class InventoryManager : MonoBehaviour
     {
         return items.Find(i => i.itemName == name);
     }
+    public void RegisterItem(ItemData item)
+    {
+        if (!items.Exists(i => i.itemName == item.itemName))
+        {
+            items.Add(item);
+            Debug.Log($"[InventoryManager] Registered item: {item.itemName}");
+        }
+    }
 
 
 }

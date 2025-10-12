@@ -89,10 +89,17 @@ public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     public void ClearSlot()
     {
         currentItem = null;
+
         if (nameText != null) nameText.text = "";
-        if (iconImage != null) iconImage.sprite = null;
         if (clueText != null) clueText.text = "";
+
+        if (iconImage != null)
+        {
+            iconImage.sprite = null;
+            iconImage.enabled = false; // ❌ ปิดการแสดงผลภาพ
+        }
     }
+
 
     // ✅ ใช้เฉพาะตอนยังไม่ขยาย เพื่อ "เปิด"
     public void OnPointerClick(PointerEventData eventData)
@@ -124,7 +131,40 @@ public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         if (iconImage != null)
         {
             iconImage.sprite = item.icon;
+            iconImage.enabled = true;
             iconImage.color = isFlashlight ? idleColor : Color.white;
+
+            // ✅ ปรับขนาดให้ fit slot โดยรักษาอัตราส่วน
+            RectTransform slotRect = GetComponent<RectTransform>();
+            RectTransform iconRect = iconImage.GetComponent<RectTransform>();
+
+            if (iconImage.sprite != null)
+            {
+                float slotW = slotRect.rect.width;
+                float slotH = slotRect.rect.height;
+
+                float spriteW = iconImage.sprite.rect.width;
+                float spriteH = iconImage.sprite.rect.height;
+                float spriteRatio = spriteW / spriteH;
+                float slotRatio = slotW / slotH;
+
+                float newW, newH;
+
+                // ถ้าสัดส่วน sprite กว้างกว่า slot → จำกัดตามความกว้าง
+                if (spriteRatio > slotRatio)
+                {
+                    newW = slotW * 0.9f; // เผื่อขอบเล็กน้อย
+                    newH = newW / spriteRatio;
+                }
+                else // ถ้าสูงกว่า → จำกัดตามความสูง
+                {
+                    newH = slotH * 0.9f;
+                    newW = newH * spriteRatio;
+                }
+
+                iconRect.sizeDelta = new Vector2(newW, newH);
+                iconRect.anchoredPosition = Vector2.zero;
+            }
         }
 
         if (nameText != null) nameText.text = item.itemName;
@@ -134,6 +174,7 @@ public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         if (nameText != null) nameText.gameObject.SetActive(false);
         if (clueText != null) clueText.gameObject.SetActive(false);
     }
+
 
     // ✅ Drag
     public void OnBeginDrag(PointerEventData eventData)
@@ -191,14 +232,18 @@ public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
                     ItemData newItem = combinationRecipes[key];
                     Debug.Log($"[CombineSuccess] {currentItem.itemName} + {otherSlot.currentItem.itemName} => {newItem.itemName}");
 
-                    // ✅ otherSlot ได้ item ใหม่
+                    // ✅ แทนของใหม่ในช่อง otherSlot
                     otherSlot.SetItem(newItem);
 
-                    // ✅ ช่องปัจจุบัน clear แต่ไม่ถูกทำลาย
+                    // ✅ อัปเดต logic inventory เพื่อให้ SafePin ตรวจเจอ
+                    InventoryManager.Instance.RegisterItem(newItem);
+
+                    // ✅ ล้างของเก่าออกจากช่องปัจจุบัน
                     ClearSlot();
 
                     return;
                 }
+
                 else
                 {
                     Debug.Log($"[CombineFail] ไม่มีสูตรสำหรับ {currentItem.itemName} + {otherSlot.currentItem.itemName}");

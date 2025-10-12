@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.UI;
 
 public class WirePuzzle : MonoBehaviour, IItemReceiver
 {
@@ -27,7 +28,14 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
 
     [Header("Penalty Settings")]
     [Tooltip("จำนวนวินาทีที่จะลดเมื่อผู้เล่นลากออกนอกเส้น")]
-    public float outOfPathPenalty = 10f; // ✅ ตั้งค่าได้จาก Inspector
+    public float outOfPathPenalty = 10f;
+
+    [Header("Flash Effect")]
+    [Tooltip("Panel สีแดงที่จะใช้ flash ตอนโดนลงโทษ")]
+    public GameObject damageFlashPanel; // 🔥 ใส่ Panel UI ที่เป็นสีแดงเต็มจอ
+
+    public float flashDuration = 0.3f; // เวลา flash ทั้งหมด
+    public float flashMaxAlpha = 0.6f; // ความเข้มสูงสุดตอน flash
 
     private bool isDragging = false;
     private bool solved = false;
@@ -51,6 +59,9 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         startCollider = startObject.GetComponent<Collider2D>();
         endCollider = endObject.GetComponent<Collider2D>();
         startOriginalPos = startObject.transform.position;
+
+        if (damageFlashPanel != null)
+            damageFlashPanel.SetActive(false);
     }
 
     public void OnItemUsed(string itemName)
@@ -125,6 +136,10 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         {
             Debug.LogWarning("[WirePuzzle] ❌ Out of red — Reset!");
 
+            // 🔻 Flash Panel
+            if (damageFlashPanel != null)
+                StartCoroutine(FlashDamagePanel());
+
             // 🔻 ลดเวลาใน WallCountdownWithImages ถ้ามี
             WallCountdownWithImages timer = FindObjectOfType<WallCountdownWithImages>();
             if (timer != null)
@@ -142,6 +157,38 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
             Debug.Log("[WirePuzzle] 🎉 Reached END");
             PuzzleSolved();
         }
+    }
+
+    private IEnumerator FlashDamagePanel()
+    {
+        damageFlashPanel.SetActive(true);
+        Image img = damageFlashPanel.GetComponent<Image>();
+        if (img == null) yield break;
+
+        Color baseColor = img.color;
+        float t = 0f;
+
+        // Fade In (เร็ว)
+        while (t < flashDuration * 0.3f)
+        {
+            t += Time.deltaTime;
+            float a = Mathf.Lerp(0f, flashMaxAlpha, t / (flashDuration * 0.3f));
+            img.color = new Color(baseColor.r, baseColor.g, baseColor.b, a);
+            yield return null;
+        }
+
+        // Fade Out (ช้า)
+        t = 0f;
+        while (t < flashDuration * 0.7f)
+        {
+            t += Time.deltaTime;
+            float a = Mathf.Lerp(flashMaxAlpha, 0f, t / (flashDuration * 0.7f));
+            img.color = new Color(baseColor.r, baseColor.g, baseColor.b, a);
+            yield return null;
+        }
+
+        damageFlashPanel.SetActive(false);
+        img.color = new Color(baseColor.r, baseColor.g, baseColor.b, 0f);
     }
 
     void ResetPuzzle()

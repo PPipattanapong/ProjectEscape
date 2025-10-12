@@ -25,6 +25,9 @@ public class Readdrop : MonoBehaviour
     [Header("Fade Settings")]
     public float fadeDuration = 1.5f;
 
+    [Header("Extra Object To Destroy")]
+    public GameObject destroyWhenSolved;   // 👈 ใส่ใน Inspector ได้เลย (เช่น hint วิบวับ)
+
     private bool solved = false;
     private bool sawLastPage = false;
 
@@ -74,7 +77,7 @@ public class Readdrop : MonoBehaviour
         if (currentPage + 2 < pages.Length)
         {
             currentPage += 2;
-            ShowPagesInstant(); // ✅ เปลี่ยนหน้าแบบไม่เฟด
+            ShowPagesInstant();
             if (currentPage + 1 >= pages.Length - 1)
                 sawLastPage = true;
         }
@@ -87,7 +90,7 @@ public class Readdrop : MonoBehaviour
         if (currentPage - 2 >= 0)
         {
             currentPage -= 2;
-            ShowPagesInstant(); // ✅ เปลี่ยนหน้าแบบไม่เฟด
+            ShowPagesInstant();
             if (sawLastPage && currentPage <= 0)
                 PuzzleSolved();
         }
@@ -95,14 +98,12 @@ public class Readdrop : MonoBehaviour
 
     private void ShowPagesInstant()
     {
-        // ซ้าย
         if (pageTextLeft != null)
             pageTextLeft.text = $"{currentPage + 1}/{pages.Length}";
 
         if (hintTextLeft != null && currentPage < pages.Length)
             hintTextLeft.text = pages[currentPage];
 
-        // ขวา
         if (pageTextRight != null)
         {
             if (currentPage + 1 < pages.Length)
@@ -133,7 +134,40 @@ public class Readdrop : MonoBehaviour
         Collider2D col = GetComponent<Collider2D>();
         if (col != null) col.enabled = false;
 
+        // 🟡 เรียกให้ลบ object ที่ตั้งไว้ใน Inspector (แบบ fade-out)
+        if (destroyWhenSolved != null)
+            StartCoroutine(FadeAndDestroy(destroyWhenSolved, fadeDuration));
+
         Debug.Log("Book puzzle solved! Reward unlocked.");
+    }
+
+    private IEnumerator FadeAndDestroy(GameObject target, float duration)
+    {
+        // รองรับทั้ง SpriteRenderer และ Image
+        SpriteRenderer sr = target.GetComponent<SpriteRenderer>();
+        Image img = target.GetComponent<Image>();
+
+        if (sr == null && img == null)
+        {
+            Destroy(target);
+            yield break;
+        }
+
+        float t = 0f;
+        Color originalColor = sr ? sr.color : img.color;
+
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float alpha = Mathf.Lerp(originalColor.a, 0f, t / duration);
+
+            if (sr) sr.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
+            if (img) img.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
+
+            yield return null;
+        }
+
+        Destroy(target);
     }
 
     private IEnumerator FadeInNoteAndFadeOutPanel(GameObject noteObj, GameObject panelObj, float duration)

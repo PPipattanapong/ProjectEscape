@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System.Collections;
 
 public class DoorController : MonoBehaviour, IItemReceiver
 {
@@ -7,15 +8,21 @@ public class DoorController : MonoBehaviour, IItemReceiver
     public LightController centerLight;
 
     [Header("Extra Object To Enable")]
-    public GameObject unlockTarget; // 👉 ลาก GameObject ที่อยากให้โผล่มาใน Inspector
+    [Tooltip("วัตถุที่จะโผล่มาหลังจากประตูเปิด")]
+    public GameObject unlockTarget;
+
+    [Header("Extra Object To Destroy")]
+    [Tooltip("วัตถุที่จะค่อยๆจางหายหลังประตูเปิด")]
+    public GameObject destroyWhenOpened;
+
+    [Header("Fade Settings")]
+    public float fadeDuration = 1.5f;
 
     private bool keyInserted = false;
-    private SpriteRenderer spriteRenderer;
     private Collider2D doorCollider;
 
     void Start()
     {
-        spriteRenderer = GetComponent<SpriteRenderer>();
         doorCollider = GetComponent<Collider2D>();
 
         // ปิด target ตั้งแต่แรก
@@ -30,7 +37,9 @@ public class DoorController : MonoBehaviour, IItemReceiver
         if (itemName == "Key")
         {
             keyInserted = true;
-            centerLight.SetGreen();
+            if (centerLight != null)
+                centerLight.SetGreen();
+
             CheckDoor();
         }
         else
@@ -43,21 +52,53 @@ public class DoorController : MonoBehaviour, IItemReceiver
     {
         Debug.Log($"CheckDoor → left:{leftLight.isGreen}, right:{rightLight.isGreen}, key:{keyInserted}");
 
+        // ✅ ถ้าไฟซ้าย-ขวาเขียว และใส่กุญแจแล้ว → ประตูเปิด
         if (leftLight.isGreen && rightLight.isGreen && keyInserted)
         {
-            Debug.Log("Door opened!");
+            Debug.Log("✅ Door opened!");
 
-            // ✅ Move door behind everything (sorting order)
-            if (spriteRenderer != null)
-                spriteRenderer.sortingOrder = 0;
-
-            // ✅ Disable collider so it no longer blocks
+            // ปิด collider เพื่อให้เดินผ่านได้
             if (doorCollider != null)
                 doorCollider.enabled = false;
 
-            // ✅ Active target object (เช่น Exit)
+            // โชว์วัตถุปลายทาง
             if (unlockTarget != null)
                 unlockTarget.SetActive(true);
+
+            // ✅ ทำ fade และลบ object ที่ตั้งไว้
+            if (destroyWhenOpened != null)
+                StartCoroutine(FadeAndDestroy(destroyWhenOpened, fadeDuration));
         }
+    }
+
+    private IEnumerator FadeAndDestroy(GameObject target, float duration)
+    {
+        SpriteRenderer sr = target.GetComponent<SpriteRenderer>();
+        UnityEngine.UI.Image img = target.GetComponent<UnityEngine.UI.Image>();
+
+        // ถ้าไม่มี Renderer หรือ Image → ลบทันที
+        if (sr == null && img == null)
+        {
+            Destroy(target);
+            yield break;
+        }
+
+        float t = 0f;
+        Color originalColor = sr ? sr.color : img.color;
+
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float alpha = Mathf.Lerp(originalColor.a, 0f, t / duration);
+
+            if (sr)
+                sr.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
+            if (img)
+                img.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
+
+            yield return null;
+        }
+
+        Destroy(target);
     }
 }

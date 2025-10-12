@@ -19,6 +19,9 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
     public Color solvedColor = Color.white; // สีเป้าหมาย (เช่นขาว)
     public float fadeDuration = 2f;         // ระยะเวลา fade
 
+    [Header("Extra Object To Destroy")]
+    public GameObject destroyWhenSolved;    // 👈 ตั้งใน Inspector ได้เลย
+
     private Quaternion targetRotation;
     private bool isPanelActive;
 
@@ -30,7 +33,6 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
         if (og != null)
             targetRotation = og.transform.rotation;
 
-        // เซ็ตสีเริ่มต้น (ถ้ามี SpriteRenderer)
         SpriteRenderer sr = GetComponent<SpriteRenderer>();
         if (sr != null)
             sr.color = startColor;
@@ -88,7 +90,6 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
         }
     }
 
-    // ✅ ใช้ EventSystem ตรวจว่า pointer อยู่บน panel หรือ child
     private bool IsPointerInsidePanel()
     {
         PointerEventData pointerData = new PointerEventData(EventSystem.current)
@@ -121,22 +122,8 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
             Debug.Log("[RotatePuzzle] Puzzle Solved!");
             ClosePanel();
 
-            // ✅ ทำเอฟเฟกต์ fade
+            // ✅ เอฟเฟกต์ fade เมื่อแก้ได้
             StartCoroutine(FadeSolvedEffects());
-
-            // ✅ ทำให้ item "Rotate" หายจาก inventory (แต่ช่องยังอยู่)
-            InventorySlot[] slots = FindObjectsOfType<InventorySlot>();
-            foreach (var slot in slots)
-            {
-                if (slot.currentItem != null && slot.currentItem.itemName == "Rotate")
-                {
-                    slot.ClearSlot(); // ❌ ไม่ปิด slot, แค่ล้างของ
-                    Debug.Log("[RotatePuzzle] Cleared Rotate item from inventory");
-                }
-            }
-
-            // ✅ Sync RotateInBG (ตัวนี้ติดสคริปต์ RotatePuzzle) ให้เหมือน other
-            transform.rotation = other.transform.rotation;
         }
     }
 
@@ -155,7 +142,6 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
                 c.a = 0f;
                 srUnlock.color = c;
 
-                // fade ทั้งสี object นี้ และ fade unlock object พร้อมกัน
                 while (t < fadeDuration)
                 {
                     t += Time.deltaTime;
@@ -169,14 +155,12 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
                     yield return null;
                 }
 
-                // set ค่า final
                 if (sr != null) sr.color = solvedColor;
                 srUnlock.color = new Color(c.r, c.g, c.b, 1f);
             }
         }
         else
         {
-            // ถ้าไม่มี unlockObject → แค่ fade สีตัวเอง
             while (t < fadeDuration)
             {
                 t += Time.deltaTime;
@@ -190,6 +174,54 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
 
             if (sr != null) sr.color = solvedColor;
         }
+
+        // ✅ ลบไอเท็ม "Sign" ออกจาก inventory (แต่อย่าแตะช่อง)
+        InventorySlot[] slots = FindObjectsOfType<InventorySlot>();
+        foreach (var slot in slots)
+        {
+            if (slot.currentItem != null && slot.currentItem.itemName == "Sign")
+            {
+                slot.ClearSlot();
+                Debug.Log("[RotatePuzzle] Cleared 'Sign' item from inventory");
+            }
+        }
+
+        // ✅ Sync ตัวพื้นหลังกับตัวหมุน
+        transform.rotation = other.transform.rotation;
+
+        // ✅ ถ้ามี object ที่ต้องหายหลัง solved → fade out แล้ว destroy
+        if (destroyWhenSolved != null)
+            StartCoroutine(FadeAndDestroy(destroyWhenSolved, fadeDuration));
+    }
+
+    IEnumerator FadeAndDestroy(GameObject target, float duration)
+    {
+        SpriteRenderer sr = target.GetComponent<SpriteRenderer>();
+        UnityEngine.UI.Image img = target.GetComponent<UnityEngine.UI.Image>();
+
+        if (sr == null && img == null)
+        {
+            Destroy(target);
+            yield break;
+        }
+
+        float t = 0f;
+        Color originalColor = sr ? sr.color : img.color;
+
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float alpha = Mathf.Lerp(originalColor.a, 0f, t / duration);
+
+            if (sr)
+                sr.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
+            if (img)
+                img.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
+
+            yield return null;
+        }
+
+        Destroy(target);
     }
 
     void ClosePanel()
