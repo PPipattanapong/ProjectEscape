@@ -1,4 +1,4 @@
-public interface IItemReceiver
+﻿public interface IItemReceiver
 {
     void OnItemUsed(string itemName);
 }

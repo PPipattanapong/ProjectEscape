@@ -1,8 +1,8 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;      // ✅ ต้องมีบรรทัดนี้
+using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
-
+using TMPro; // ✅ เพิ่มเพื่อใช้ TextMeshPro
 
 public class LineConnector : MonoBehaviour
 {
@@ -10,7 +10,7 @@ public class LineConnector : MonoBehaviour
     public Camera mainCamera;           // กล้องหลัก
     public LineRenderer linePrefab;     // พรีแฟบของเส้น (LineRenderer)
     public Transform lineParent;        // ที่เก็บเส้นทั้งหมด
-    public GameObject rewardObject;     // 🎁 วัตถุที่จะโผล่มาหลังจับคู่ครบ
+    public TextMeshPro rewardText;      // 🟢 ใช้แทน GameObject rewardObject
     public float fadeDuration = 1.5f;   // ระยะเวลาที่ใช้ fade in
 
     [Header("Debug")]
@@ -28,15 +28,21 @@ public class LineConnector : MonoBehaviour
         if (mainCamera == null)
             mainCamera = Camera.main;
 
-        // ✅ ตั้งชื่อคู่ที่ถูกต้องไว้ที่นี่
+        // ✅ ตั้งคู่ที่ถูกต้อง
         correctPairs.Add("A", "1");
         correctPairs.Add("B", "2");
         correctPairs.Add("C", "3");
         correctPairs.Add("D", "4");
         correctPairs.Add("E", "5");
 
-        if (rewardObject != null)
-            rewardObject.SetActive(false); // ซ่อนของรางวัลไว้ก่อน
+        // ซ่อนข้อความรางวัลไว้ก่อน
+        if (rewardText != null)
+        {
+            Color c = rewardText.color;
+            c.a = 0f;
+            rewardText.color = c;
+            rewardText.gameObject.SetActive(false);
+        }
     }
 
     void Update()
@@ -83,20 +89,22 @@ public class LineConnector : MonoBehaviour
                     currentLine.endColor = correctColor;
                     currentLine.SetPosition(1, hit.transform.position);
 
-                    // ปิด GameObject ทั้งสองจุด
                     startPoint.gameObject.SetActive(false);
                     hit.gameObject.SetActive(false);
 
-                    // เพิ่มลงใน used list
                     usedPoints.Add(startName);
                     usedPoints.Add(endName);
 
-                    // ✅ ถ้าจับคู่ครบทั้งหมด → เรียก FadeIn
+                    // ✅ ถ้าจับคู่ครบทั้งหมด → แสดงข้อความ fade
                     if (usedPoints.Count >= correctPairs.Count * 2 && !puzzleSolved)
                     {
                         puzzleSolved = true;
-                        if (rewardObject != null)
-                            StartCoroutine(FadeInObject(rewardObject, fadeDuration));
+                        if (rewardText != null)
+                            StartCoroutine(FadeInTMP(rewardText, fadeDuration));
+
+                        var light = FindObjectOfType<SafeProgressLight>();
+                        if (light != null)
+                            light.MarkPuzzleComplete();
                     }
                 }
                 else
@@ -107,7 +115,6 @@ public class LineConnector : MonoBehaviour
             }
             else
             {
-                // ไม่ได้ปล่อยใส่จุด
                 Destroy(currentLine.gameObject);
             }
 
@@ -116,41 +123,21 @@ public class LineConnector : MonoBehaviour
         }
     }
 
-    private IEnumerator FadeInObject(GameObject obj, float duration)
+    // 🟢 ฟังก์ชัน fade สำหรับ TextMeshPro 3D
+    private IEnumerator FadeInTMP(TextMeshPro tmp, float duration)
     {
-        obj.SetActive(true);
-
-        SpriteRenderer sr = obj.GetComponent<SpriteRenderer>();
-        Image img = obj.GetComponent<Image>();
+        tmp.gameObject.SetActive(true);
+        Color c = tmp.color;
+        c.a = 0f;
+        tmp.color = c;
 
         float t = 0f;
-        if (sr != null)
+        while (t < duration)
         {
-            Color c = sr.color;
-            c.a = 0f;
-            sr.color = c;
-
-            while (t < duration)
-            {
-                t += Time.deltaTime;
-                float alpha = Mathf.Clamp01(t / duration);
-                sr.color = new Color(c.r, c.g, c.b, alpha);
-                yield return null;
-            }
-        }
-        else if (img != null)
-        {
-            Color c = img.color;
-            c.a = 0f;
-            img.color = c;
-
-            while (t < duration)
-            {
-                t += Time.deltaTime;
-                float alpha = Mathf.Clamp01(t / duration);
-                img.color = new Color(c.r, c.g, c.b, alpha);
-                yield return null;
-            }
+            t += Time.deltaTime;
+            float alpha = Mathf.Clamp01(t / duration);
+            tmp.color = new Color(c.r, c.g, c.b, alpha);
+            yield return null;
         }
     }
 

@@ -9,7 +9,8 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
 {
     [Header("Wire Settings")]
     public List<Image> wireImages;
-    public int correctWireIndex = 0;
+    [Tooltip("ลำดับสายไฟที่ต้องตัดให้ถูก เช่น [1,3,0] คือ 2→4→1 ถ้าเริ่มนับจาก 0")]
+    public List<int> correctSequence = new List<int> { 1, 3, 0 }; // ✅ เส้นที่ 2, 4, 1
     public string requiredItem = "WireCutter";
 
     [Header("Flash Effect")]
@@ -20,6 +21,12 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
     [Header("Scene Settings")]
     public string failSceneName;
 
+    [Header("Reward Object")]
+    [Tooltip("GameObject ที่จะโผล่มาหลังตัดครบถูกทั้งหมด")]
+    public GameObject rewardObject;
+
+    private int currentStep = 0;
+    private bool failed = false;
     private bool solved = false;
     private BombTime bombTimer;
 
@@ -28,8 +35,12 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
         if (damageFlashPanel != null)
             damageFlashPanel.SetActive(false);
 
+        if (rewardObject != null)
+            rewardObject.SetActive(false);
+
         bombTimer = FindObjectOfType<BombTime>();
 
+        // เพิ่ม collider + receiver ให้ทุกเส้น
         for (int i = 0; i < wireImages.Count; i++)
         {
             int index = i;
@@ -47,7 +58,7 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
 
     public void OnWireItemUsed(string itemName, int index)
     {
-        if (solved) return;
+        if (solved || failed) return;
 
         if (itemName == requiredItem)
             CutWire(index);
@@ -57,25 +68,40 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
 
     private void CutWire(int index)
     {
-        if (solved) return;
+        if (solved || failed) return;
 
-        if (index == correctWireIndex)
+        Debug.Log($"[WireCutPuzzle] Cutting wire #{index}");
+
+        // ตรวจว่าถูกเส้นตามลำดับไหม
+        if (index == correctSequence[currentStep])
         {
-            solved = true;
             wireImages[index].gameObject.SetActive(false);
+            currentStep++;
 
-            if (bombTimer != null)
-                bombTimer.FreezeTimer(); // ✅ แค่หยุดเวลาเฉย ๆ
+            // ✅ ครบทุกเส้นตามลำดับ
+            if (currentStep >= correctSequence.Count)
+            {
+                solved = true;
+                Debug.Log("[WireCutPuzzle] ✅ All correct wires cut in order!");
 
-            Debug.Log("[WireCutPuzzle] ✅ Correct wire cut!");
+                if (bombTimer != null)
+                    bombTimer.FreezeTimer();
+
+                if (rewardObject != null)
+                    rewardObject.SetActive(true); // ✅ โผล่มาเลย
+
+                return;
+            }
         }
         else
         {
-            Debug.Log("[WireCutPuzzle] 💥 Wrong wire! Triggering explosion...");
+            // ❌ ตัดผิดลำดับ หรือเส้นไม่ถูกต้อง
+            failed = true;
+            Debug.Log("[WireCutPuzzle] 💥 Wrong wire or order! Triggering explosion...");
 
             if (bombTimer != null)
             {
-                bombTimer.FreezeTimer(); // ✅ หยุดเวลา
+                bombTimer.FreezeTimer();
                 if (bombTimer.clockText != null)
                 {
                     bombTimer.clockText.text = "BOOM!";
