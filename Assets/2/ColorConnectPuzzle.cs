@@ -22,9 +22,8 @@ public class ColorConnectPuzzle : MonoBehaviour
     public GameObject puzzlePanel;
     public GameObject puzzleObject;
 
-    [Header("Reward Settings")]
-    public TextMeshPro rewardText;           // ✅ เพิ่มข้อความรางวัล
-    public float rewardFadeDuration = 1.5f;  // ความเร็วในการ fade
+    [Header("Wire Reference")]
+    public WireCutPuzzle wireCutPuzzle;    // ✅ เรียกใช้ ApplyPodiumColor ตอนสำเร็จ
 
     [Header("Close Settings")]
     public float fadeDuration = 0.25f;
@@ -54,15 +53,6 @@ public class ColorConnectPuzzle : MonoBehaviour
 
         if (puzzleObject != null && puzzleObject.GetComponent<Collider2D>() == null)
             puzzleObject.AddComponent<BoxCollider2D>();
-
-        // 🔹 ซ่อน reward ไว้ก่อน
-        if (rewardText != null)
-        {
-            Color c = rewardText.color;
-            c.a = 0f;
-            rewardText.color = c;
-            rewardText.gameObject.SetActive(false);
-        }
 
         for (int i = 0; i < colors.Length; i++)
         {
@@ -101,7 +91,7 @@ public class ColorConnectPuzzle : MonoBehaviour
     void GenerateGrid()
     {
         cells = new Cell[gridSize, gridSize];
-        for (int y = gridSize - 1; y >= 0; y--) // 👈 เริ่มจากบนสุดลงล่าง
+        for (int y = gridSize - 1; y >= 0; y--)
         {
             for (int x = 0; x < gridSize; x++)
             {
@@ -129,23 +119,10 @@ public class ColorConnectPuzzle : MonoBehaviour
     // จุด start-end แบบ Wuthering Waves
     void PlaceFixedColorPoints_Wuwa()
     {
-        // 5x5 grid (0,0) = ล่างซ้าย / (4,4) = บนขวา
-
-        // 🔵 Blue
-        SetEndpoint(0, 3, 1);
-        SetEndpoint(2, 4, 1);
-
-        // 🔴 Red
-        SetEndpoint(3, 4, 0);
-        SetEndpoint(1, 1, 0);
-
-        // 🟢 Green
-        SetEndpoint(0, 1, 3);
-        SetEndpoint(2, 2, 3);
-
-        // 🟡 Yellow
-        SetEndpoint(3, 1, 2);
-        SetEndpoint(4, 2, 2);
+        SetEndpoint(0, 3, 1); SetEndpoint(2, 4, 1); // Blue
+        SetEndpoint(3, 4, 0); SetEndpoint(1, 1, 0); // Red
+        SetEndpoint(0, 1, 3); SetEndpoint(2, 2, 3); // Green
+        SetEndpoint(3, 1, 2); SetEndpoint(4, 2, 2); // Yellow
     }
 
     void SetEndpoint(int x, int y, int colorIdx)
@@ -256,35 +233,20 @@ public class ColorConnectPuzzle : MonoBehaviour
         if (solvedPairs >= totalPairs)
         {
             puzzleSolved = true;
-            StartCoroutine(ShowReward());
+            Debug.Log("[ColorConnectPuzzle] Puzzle Solved!");
+
+            // ✅ เรียก WireCutPuzzle.ApplyPodiumColor()
+            if (wireCutPuzzle != null)
+            {
+                wireCutPuzzle.ApplyPodiumColor();
+                Debug.Log("[ColorConnectPuzzle] Called wireCutPuzzle.ApplyPodiumColor()");
+            }
+            else
+            {
+                Debug.LogWarning("[ColorConnectPuzzle] ⚠️ WireCutPuzzle not assigned in Inspector!");
+            }
+
             StartCoroutine(ClosePanel());
-
-            var light = FindObjectOfType<SafeProgressLight>();
-            if (light != null)
-                light.MarkPuzzleComplete();
-        }
-    }
-
-    IEnumerator ShowReward()
-    {
-        if (rewardText == null) yield break;
-        rewardText.gameObject.SetActive(true);
-
-        Color c = rewardText.color;
-        c.a = 0f;
-        rewardText.color = c;
-
-        float t = 0f;
-        Vector3 startPos = rewardText.transform.position;
-        Vector3 targetPos = startPos + new Vector3(0, 0.25f, 0); // ค่อยๆลอยขึ้น
-
-        while (t < rewardFadeDuration)
-        {
-            t += Time.deltaTime;
-            float alpha = Mathf.Clamp01(t / rewardFadeDuration);
-            rewardText.color = new Color(c.r, c.g, c.b, alpha);
-            rewardText.transform.position = Vector3.Lerp(startPos, targetPos, alpha);
-            yield return null;
         }
     }
 

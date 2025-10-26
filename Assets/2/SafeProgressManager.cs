@@ -3,8 +3,8 @@ using System.Collections;
 
 public class SafeProgressLight : MonoBehaviour
 {
-    [Header("Lights (3 SpriteRenderers)")]
-    public SpriteRenderer[] lights;  // ไฟ 3 ดวง 2D Sprite
+    [Header("Light (Single SpriteRenderer)")]
+    public SpriteRenderer lightRenderer;  // ไฟดวงเดียว
     public Color redColor = Color.red;
     public Color greenColor = Color.green;
 
@@ -15,21 +15,17 @@ public class SafeProgressLight : MonoBehaviour
     [Header("Fade Settings")]
     public float fadeDuration = 1.5f;
 
-    private int progress = 0;
     private bool unlocked = false;
+    private bool puzzleCompleted = false;
 
     void Start()
     {
-        // ❌ ไม่โหลดจาก PlayerPrefs อีกต่อไป (เริ่มใหม่ทุกรอบ)
-        progress = 0;
         unlocked = false;
+        puzzleCompleted = false;
 
-        // ตั้งไฟเริ่มต้นเป็นแดงหมด
-        for (int i = 0; i < lights.Length; i++)
-        {
-            if (lights[i] != null)
-                lights[i].color = redColor;
-        }
+        // ตั้งไฟเริ่มต้นเป็นแดง
+        if (lightRenderer != null)
+            lightRenderer.color = redColor;
 
         // เซ็ตสถานะเริ่มต้นของวัตถุ
         if (newObject != null)
@@ -48,25 +44,19 @@ public class SafeProgressLight : MonoBehaviour
         }
     }
 
-    // ✅ เรียกจาก puzzle อื่นเมื่อผ่าน 1 ด่าน
+    // ✅ เรียกจาก puzzle อื่นเมื่อผ่านแล้ว
     public void MarkPuzzleComplete()
     {
-        if (unlocked) return;
+        if (unlocked || puzzleCompleted) return;
 
-        progress = Mathf.Clamp(progress + 1, 0, lights.Length);
-        UpdateLights();
+        puzzleCompleted = true;
 
-        if (progress >= lights.Length)
-            StartCoroutine(UnlockSafe());
-    }
+        // เปลี่ยนไฟเป็นเขียว
+        if (lightRenderer != null)
+            lightRenderer.color = greenColor;
 
-    void UpdateLights()
-    {
-        for (int i = 0; i < lights.Length; i++)
-        {
-            if (lights[i] == null) continue;
-            lights[i].color = (i < progress) ? greenColor : redColor;
-        }
+        // ปลดล็อกเซฟ
+        StartCoroutine(UnlockSafe());
     }
 
     IEnumerator UnlockSafe()
@@ -110,11 +100,11 @@ public class SafeProgressLight : MonoBehaviour
     [ContextMenu("Reset Progress")]
     public void ResetProgress()
     {
-        progress = 0;
         unlocked = false;
+        puzzleCompleted = false;
 
-        foreach (var l in lights)
-            if (l != null) l.color = redColor;
+        if (lightRenderer != null)
+            lightRenderer.color = redColor;
 
         if (newObject != null)
         {
@@ -131,6 +121,6 @@ public class SafeProgressLight : MonoBehaviour
             safeRenderer.color = c;
         }
 
-        Debug.Log("🔄 Safe light progress reset");
+        Debug.Log("🔄 Safe light reset");
     }
 }

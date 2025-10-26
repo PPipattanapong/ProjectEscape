@@ -5,26 +5,24 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine.EventSystems;
 
-public class SlidePuzzle3x3 : MonoBehaviour
+public class SlidePuzzle4x4 : MonoBehaviour
 {
     [Header("UI Settings")]
-    public GameObject puzzlePanel;        // Panel หลัก
-    public List<Button> tiles;            // ปุ่ม 1–8
-    public RectTransform emptySlot;       // ช่องว่าง
-    public GameObject puzzleObject;       // ของที่ต้องคลิกเพื่อเปิด
-    public Button shuffleButton;          // ปุ่ม Shuffle
-    public float fadeDuration = 0.5f;
-
-    [Header("Reward Settings")]
-    public TextMeshPro rewardText;        // ✅ ข้อความรางวัล
-    public float rewardFadeDuration = 1.5f;
+    public GameObject puzzlePanel;
+    public List<Button> tiles;             // ปุ่ม 1–15
+    public RectTransform emptySlot;        // ช่องว่าง
+    public GameObject puzzleObject;
+    public Button shuffleButton;
 
     [Header("Cheat Settings")]
-    public Button cheatButton;            // ✅ ปุ่มโกง (UI TMP Button)
-    public TextMeshProUGUI cheatButtonText; // ข้อความบนปุ่ม (optional)
+    public Button cheatButton;
+    public TextMeshProUGUI cheatButtonText;
 
-    private Vector2[] positions = new Vector2[9];
-    private int emptyIndex = 8;
+    [Header("Wire Reference")]
+    public WireCutPuzzle wireCutPuzzle;    // ✅ อ้างถึง WireCutPuzzle ที่จะเรียกตอนชนะ
+
+    private Vector2[] positions = new Vector2[16];
+    private int emptyIndex = 15;
     private bool isOpen = false;
     private bool puzzleSolved = false;
     private RectTransform panelRect;
@@ -48,22 +46,11 @@ public class SlidePuzzle3x3 : MonoBehaviour
 
         ShuffleTiles();
 
-        // 🔹 ซ่อน reward ไว้ก่อน
-        if (rewardText != null)
-        {
-            Color c = rewardText.color;
-            c.a = 0f;
-            rewardText.color = c;
-            rewardText.gameObject.SetActive(false);
-        }
-
-        // ✅ ตั้งค่าปุ่มโกง
         if (cheatButton != null)
             cheatButton.onClick.AddListener(CheatSolve);
 
         if (cheatButtonText != null)
             cheatButtonText.text = "CHEAT!";
-
     }
 
     void SetupGrid()
@@ -84,15 +71,15 @@ public class SlidePuzzle3x3 : MonoBehaviour
 
         float cellSize = 100f;
         float spacing = 5f;
-        float totalWidth = (3 * cellSize) + (2 * spacing);
-        float totalHeight = (3 * cellSize) + (2 * spacing);
+        float totalWidth = (4 * cellSize) + (3 * spacing);
+        float totalHeight = (4 * cellSize) + (3 * spacing);
 
         Vector2 topLeft = new Vector2(-totalWidth / 2 + cellSize / 2, totalHeight / 2 - cellSize / 2);
 
         int idx = 0;
-        for (int y = 0; y < 3; y++)
+        for (int y = 0; y < 4; y++)
         {
-            for (int x = 0; x < 3; x++)
+            for (int x = 0; x < 4; x++)
             {
                 positions[idx] = topLeft + new Vector2(x * (cellSize + spacing), -y * (cellSize + spacing));
                 idx++;
@@ -112,7 +99,6 @@ public class SlidePuzzle3x3 : MonoBehaviour
 
     void Update()
     {
-        // เปิด puzzle เมื่อคลิกวัตถุ
         if (Input.GetMouseButtonDown(0) && !isOpen && !puzzleSolved)
         {
             Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -125,7 +111,6 @@ public class SlidePuzzle3x3 : MonoBehaviour
             }
         }
 
-        // ปิด puzzle เมื่อคลิคนอก panel
         if (isOpen && Input.GetMouseButtonDown(0))
         {
             if (!IsPointerOverPanel())
@@ -174,35 +159,21 @@ public class SlidePuzzle3x3 : MonoBehaviour
     void TriggerSolved()
     {
         puzzleSolved = true;
-        StartCoroutine(ShowReward());
-        StartCoroutine(ClosePanel());
 
-        var light = FindObjectOfType<SafeProgressLight>();
-        if (light != null)
-            light.MarkPuzzleComplete();
-    }
+        Debug.Log("[SlidePuzzle4x4] Puzzle Solved!");
 
-    IEnumerator ShowReward()
-    {
-        if (rewardText == null) yield break;
-
-        rewardText.gameObject.SetActive(true);
-        Color c = rewardText.color;
-        c.a = 0f;
-        rewardText.color = c;
-
-        float t = 0f;
-        Vector3 startPos = rewardText.transform.position;
-        Vector3 targetPos = startPos + new Vector3(0, 0.2f, 0); // ลอยขึ้นนิดหน่อย
-
-        while (t < rewardFadeDuration)
+        // ✅ เรียกใช้ WireCutPuzzle.ApplySqColor()
+        if (wireCutPuzzle != null)
         {
-            t += Time.deltaTime;
-            float a = Mathf.Clamp01(t / rewardFadeDuration);
-            rewardText.color = new Color(c.r, c.g, c.b, a);
-            rewardText.transform.position = Vector3.Lerp(startPos, targetPos, a);
-            yield return null;
+            wireCutPuzzle.ApplySqColor();
+            Debug.Log("[SlidePuzzle4x4] Called wireCutPuzzle.ApplySqColor()");
         }
+        else
+        {
+            Debug.LogWarning("[SlidePuzzle4x4] ⚠️ WireCutPuzzle not assigned in Inspector!");
+        }
+
+        StartCoroutine(ClosePanel());
     }
 
     int GetNearestGridIndex(Vector2 pos)
@@ -223,15 +194,15 @@ public class SlidePuzzle3x3 : MonoBehaviour
 
     bool IsAdjacent(int a, int b)
     {
-        int ax = a % 3, ay = a / 3;
-        int bx = b % 3, by = b / 3;
+        int ax = a % 4, ay = a / 4;
+        int bx = b % 4, by = b / 4;
         return Mathf.Abs(ax - bx) + Mathf.Abs(ay - by) == 1;
     }
 
     void ShuffleTiles()
     {
         List<int> order = new List<int>();
-        for (int i = 0; i < 9; i++) order.Add(i);
+        for (int i = 0; i < 16; i++) order.Add(i);
 
         do
         {
@@ -242,44 +213,58 @@ public class SlidePuzzle3x3 : MonoBehaviour
             }
         } while (!IsSolvable(order));
 
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 15; i++)
         {
             tiles[i].GetComponent<RectTransform>().anchoredPosition = positions[order[i]];
         }
 
-        emptyIndex = order[8];
+        emptyIndex = order[15];
         emptySlot.anchoredPosition = positions[emptyIndex];
         puzzleSolved = false;
     }
 
-    bool IsSolvable(List<int> tiles)
+    bool IsSolvable(List<int> order)
     {
         int inversions = 0;
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 15; i++)
         {
-            for (int j = i + 1; j < 8; j++)
+            for (int j = i + 1; j < 15; j++)
             {
-                if (tiles[i] < 8 && tiles[j] < 8 && tiles[i] > tiles[j])
+                if (order[i] < 15 && order[j] < 15 && order[i] > order[j])
                     inversions++;
             }
         }
-        return inversions % 2 == 0;
+
+        int emptyRowFromBottom = 4 - (order.IndexOf(15) / 4);
+        bool evenGrid = 4 % 2 == 0;
+
+        if (evenGrid)
+        {
+            if (emptyRowFromBottom % 2 == 0)
+                return inversions % 2 == 1;
+            else
+                return inversions % 2 == 0;
+        }
+        else
+        {
+            return inversions % 2 == 0;
+        }
     }
 
     bool CheckWin()
     {
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 15; i++)
         {
             RectTransform tileRect = tiles[i].GetComponent<RectTransform>();
             if (Vector2.Distance(tileRect.anchoredPosition, positions[i]) > 0.1f)
                 return false;
         }
-        return Vector2.Distance(emptySlot.anchoredPosition, positions[8]) <= 0.1f;
+        return Vector2.Distance(emptySlot.anchoredPosition, positions[15]) <= 0.1f;
     }
 
     IEnumerator ClosePanel()
     {
-        yield return new WaitForSeconds(fadeDuration);
+        yield return new WaitForSeconds(0.5f);
         puzzlePanel.SetActive(false);
         isOpen = false;
     }

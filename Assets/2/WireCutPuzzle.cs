@@ -5,13 +5,26 @@ using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 using TMPro;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 public class WireCutPuzzle : MonoBehaviour, IItemReceiver
 {
     [Header("Wire Settings")]
     public List<Image> wireImages;
     [Tooltip("ลำดับสายไฟที่ต้องตัดให้ถูก เช่น [1,3,0] คือ 2→4→1 ถ้าเริ่มนับจาก 0")]
-    public List<int> correctSequence = new List<int> { 1, 3, 0 }; // ✅ เส้นที่ 2, 4, 1
+    public List<int> correctSequence = new List<int> { 1, 3, 0 };
     public string requiredItem = "WireCutter";
+
+    [Header("Wire Colors (Fixed 4 Colors)")]
+    [Tooltip("ลำดับสี 0=แดง, 1=เขียว, 2=เหลือง, 3=ขาว")]
+    public List<Color> wireColors = new List<Color> { Color.red, Color.green, Color.yellow, Color.white };
+
+    [Header("Color Display Objects")]
+    public GameObject coloredStar;
+    public GameObject coloredPodium;
+    public GameObject coloredSq;
 
     [Header("Flash Effect")]
     public GameObject damageFlashPanel;
@@ -21,26 +34,23 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
     [Header("Scene Settings")]
     public string failSceneName;
 
-    [Header("Reward Object")]
-    [Tooltip("GameObject ที่จะโผล่มาหลังตัดครบถูกทั้งหมด")]
-    public GameObject rewardObject;
 
     private int currentStep = 0;
     private bool failed = false;
     private bool solved = false;
+    private bool[] colorRevealed = new bool[3];
     private BombTime bombTimer;
 
     void Start()
     {
+        ShuffleSequence();
+
         if (damageFlashPanel != null)
             damageFlashPanel.SetActive(false);
 
-        if (rewardObject != null)
-            rewardObject.SetActive(false);
 
         bombTimer = FindObjectOfType<BombTime>();
 
-        // เพิ่ม collider + receiver ให้ทุกเส้น
         for (int i = 0; i < wireImages.Count; i++)
         {
             int index = i;
@@ -56,10 +66,87 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
         }
     }
 
+    // 🎲 สุ่มลำดับ 3 ค่า จาก 0–3 โดยไม่ซ้ำ
+    private void ShuffleSequence()
+    {
+        List<int> pool = new List<int> { 0, 1, 2, 3 };
+        correctSequence.Clear();
+
+        for (int i = 0; i < 3; i++)
+        {
+            int r = Random.Range(0, pool.Count);
+            correctSequence.Add(pool[r]);
+            pool.RemoveAt(r);
+        }
+
+#if UNITY_EDITOR
+        EditorUtility.SetDirty(this);
+#endif
+
+        Debug.Log("[WireCutPuzzle] Randomized 3-wire sequence: " + string.Join(", ", correctSequence));
+    }
+
+    // 🎨 ฟังก์ชันภายในใช้ย้อมสี
+    private void ApplyColor(GameObject target, int sequenceIndex)
+    {
+        if (target == null || sequenceIndex < 0 || sequenceIndex >= correctSequence.Count)
+            return;
+
+        int colorIndex = correctSequence[sequenceIndex];
+        Color c = (colorIndex >= 0 && colorIndex < wireColors.Count) ? wireColors[colorIndex] : Color.gray;
+
+        // รองรับทั้ง SpriteRenderer และ Image
+        var sr = target.GetComponent<SpriteRenderer>();
+        if (sr != null)
+            sr.color = c;
+        else
+        {
+            var img = target.GetComponent<Image>();
+            if (img != null)
+                img.color = c;
+        }
+
+#if UNITY_EDITOR
+        EditorUtility.SetDirty(this);
+#endif
+    }
+
+    // 🟡 ย้อมสีทีละช่อง
+    public void ApplyStarColor()
+    {
+        if (!colorRevealed[0])
+        {
+            ApplyColor(coloredStar, 0);
+            colorRevealed[0] = true;
+            Debug.Log("[WireCutPuzzle] ⭐ Star color revealed!");
+        }
+    }
+
+    public void ApplyPodiumColor()
+    {
+        if (!colorRevealed[1])
+        {
+            ApplyColor(coloredPodium, 1);
+            colorRevealed[1] = true;
+            Debug.Log("[WireCutPuzzle] 🏆 Podium color revealed!");
+        }
+    }
+
+    public void ApplySqColor()
+    {
+        if (!colorRevealed[2])
+        {
+            ApplyColor(coloredSq, 2);
+            colorRevealed[2] = true;
+            Debug.Log("[WireCutPuzzle] 🔳 Square color revealed!");
+        }
+    }
+
+    // ---------------------------------------------------------------
+
     public void OnWireItemUsed(string itemName, int index)
     {
         if (solved || failed) return;
-
         if (itemName == requiredItem)
             CutWire(index);
     }
@@ -72,13 +159,11 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
 
         Debug.Log($"[WireCutPuzzle] Cutting wire #{index}");
 
-        // ตรวจว่าถูกเส้นตามลำดับไหม
         if (index == correctSequence[currentStep])
         {
             wireImages[index].gameObject.SetActive(false);
             currentStep++;
 
-            // ✅ ครบทุกเส้นตามลำดับ
             if (currentStep >= correctSequence.Count)
             {
                 solved = true;
@@ -87,17 +172,20 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
                 if (bombTimer != null)
                     bombTimer.FreezeTimer();
 
-                if (rewardObject != null)
-                    rewardObject.SetActive(true); // ✅ โผล่มาเลย
+                var light = FindObjectOfType<SafeProgressLight>();
+                if (light != null)
+                    light.MarkPuzzleComplete();
 
+
+                // ตอนสำเร็จ คุณจะเลือกเองว่าจะโชว์สีไหน
+                // เช่น เรียก ApplyStarColor(); หรือทั้งหมดก็ได้
                 return;
             }
         }
         else
         {
-            // ❌ ตัดผิดลำดับ หรือเส้นไม่ถูกต้อง
             failed = true;
-            Debug.Log("[WireCutPuzzle] 💥 Wrong wire or order! Triggering explosion...");
+            Debug.Log("[WireCutPuzzle] 💥 Wrong wire or order!");
 
             if (bombTimer != null)
             {
