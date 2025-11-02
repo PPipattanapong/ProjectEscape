@@ -13,12 +13,6 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
     public GameObject noteRight;
     public LightController doorLight;
 
-    [Header("Background")]
-    public SpriteRenderer bgRenderer;
-    public Color startColor = new Color(0.2f, 0.23f, 0.22f);
-    public Color solvedColor = new Color(0f, 1f, 0.51f);
-    public float fadeDuration = 2f;
-
     [Header("Drag Settings")]
     public float dragFollowSpeed = 25f;
     public float checkRadius = 0.15f;
@@ -51,9 +45,6 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         foreach (var pathObj in pathObjects) pathObj.SetActive(false);
         endObject.SetActive(false);
         noteRight.SetActive(false);
-
-        if (bgRenderer != null)
-            bgRenderer.color = startColor;
 
         startCollider = startObject.GetComponent<Collider2D>();
         endCollider = endObject.GetComponent<Collider2D>();
@@ -117,7 +108,6 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
 
         Vector3 pos = startObject.transform.position;
 
-        // ✅ ตรวจว่าอยู่บน path จริงไหม
         bool touchingRed = false;
         foreach (var pathObj in pathObjects)
         {
@@ -135,27 +125,21 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
             }
         }
 
-        // ❌ ถ้าออกจาก path ให้รีเซ็ตและลดเวลา
         if (!touchingRed)
         {
             Debug.LogWarning("[WirePuzzle] ❌ Out of red — Reset!");
 
-            // 🔻 Flash แดง
             if (damageFlashPanel != null)
                 StartCoroutine(FlashDamagePanel());
 
-            // 🔻 ลดเวลาใน WallCountdownWithImages ถ้ามี
             WallCountdownWithImages timer = FindObjectOfType<WallCountdownWithImages>();
             if (timer != null)
-            {
                 timer.ReduceTime(outOfPathPenalty);
-            }
 
             ResetPuzzle();
             return;
         }
 
-        // ✅ ผ่านเมื่อถึง end
         if (endCollider.OverlapPoint(pos))
         {
             Debug.Log("[WirePuzzle] 🎉 Reached END");
@@ -213,8 +197,6 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         solved = true;
         doorLight.SetGreen();
 
-        // ❌ ลบ Flash ขาวตอนผ่านออกไปแล้ว
-
         fieldObject.SetActive(false);
         startObject.SetActive(false);
         foreach (var pathObj in pathObjects)
@@ -231,43 +213,7 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
             }
         }
 
-        if (bgRenderer != null)
-            StartCoroutine(FadeBackground());
-    }
-
-    IEnumerator FadeBackground()
-    {
-        float t = 0f;
-        while (t < fadeDuration)
-        {
-            t += Time.deltaTime;
-            bgRenderer.color = Color.Lerp(startColor, solvedColor, t / fadeDuration);
-            yield return null;
-        }
-
-        bgRenderer.color = solvedColor;
-        StartCoroutine(FadeIn(noteRight, 1.5f));
-    }
-
-    IEnumerator FadeIn(GameObject obj, float duration)
-    {
-        obj.SetActive(true);
-        SpriteRenderer sr = obj.GetComponent<SpriteRenderer>();
-        if (sr == null) yield break;
-
-        Color c = sr.color;
-        c.a = 0f;
-        sr.color = c;
-
-        float t = 0f;
-        while (t < duration)
-        {
-            t += Time.deltaTime;
-            float alpha = Mathf.Lerp(0f, 1f, t / duration);
-            sr.color = new Color(c.r, c.g, c.b, alpha);
-            yield return null;
-        }
-        sr.color = new Color(c.r, c.g, c.b, 1f);
+        noteRight.SetActive(true);
     }
 
     void OnDrawGizmosSelected()
