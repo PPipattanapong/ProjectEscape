@@ -19,7 +19,17 @@ public class SlidePuzzle4x4 : MonoBehaviour
     public TextMeshProUGUI cheatButtonText;
 
     [Header("Wire Reference")]
-    public WireCutPuzzle wireCutPuzzle;    // ✅ อ้างถึง WireCutPuzzle ที่จะเรียกตอนชนะ
+    public WireCutPuzzle wireCutPuzzle;    // เรียกตอนชนะ
+
+    [Header("Extra Object To Destroy")]
+    public GameObject destroyWhenSolved;
+
+    [Header("Success Text")]
+    [Tooltip("ข้อความ SUCCESS ที่จะโชว์ตอนผ่านพัซเซิล")]
+    public TextMeshProUGUI successText;
+
+    [Header("Fade Settings")]
+    public float fadeDuration = 1.5f;
 
     private Vector2[] positions = new Vector2[16];
     private int emptyIndex = 15;
@@ -29,10 +39,16 @@ public class SlidePuzzle4x4 : MonoBehaviour
 
     void Start()
     {
+        // ✅ ปิด panel และซ่อนข้อความ SUCCESS ตอนเริ่ม
         if (puzzlePanel != null)
         {
             puzzlePanel.SetActive(false);
             panelRect = puzzlePanel.GetComponent<RectTransform>();
+        }
+
+        if (successText != null)
+        {
+            successText.gameObject.SetActive(false); // ซ่อนไว้จนกว่าจะผ่าน
         }
 
         if (puzzleObject != null && puzzleObject.GetComponent<Collider2D>() == null)
@@ -99,6 +115,7 @@ public class SlidePuzzle4x4 : MonoBehaviour
 
     void Update()
     {
+        // ✅ เปิด panel เมื่อคลิกที่วัตถุ
         if (Input.GetMouseButtonDown(0) && !isOpen && !puzzleSolved)
         {
             Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -111,6 +128,7 @@ public class SlidePuzzle4x4 : MonoBehaviour
             }
         }
 
+        // ✅ ปิด panel เมื่อคลิกนอก panel (หลังผ่านก็ยังคลิกนอกเพื่อปิดได้)
         if (isOpen && Input.GetMouseButtonDown(0))
         {
             if (!IsPointerOverPanel())
@@ -129,7 +147,7 @@ public class SlidePuzzle4x4 : MonoBehaviour
 
     void MoveTile(int index)
     {
-        if (puzzleSolved) return;
+        if (puzzleSolved) return; // หลังผ่านแล้วห้ามกดอีก
 
         RectTransform tileRect = tiles[index].GetComponent<RectTransform>();
         int tileIndex = GetNearestGridIndex(tileRect.anchoredPosition);
@@ -151,7 +169,6 @@ public class SlidePuzzle4x4 : MonoBehaviour
     void CheatSolve()
     {
         if (puzzleSolved) return;
-
         Debug.Log("🧩 Cheat button pressed — puzzle instantly solved!");
         TriggerSolved();
     }
@@ -159,7 +176,6 @@ public class SlidePuzzle4x4 : MonoBehaviour
     void TriggerSolved()
     {
         puzzleSolved = true;
-
         Debug.Log("[SlidePuzzle4x4] Puzzle Solved!");
 
         // ✅ เรียกใช้ WireCutPuzzle.ApplySqColor()
@@ -168,12 +184,50 @@ public class SlidePuzzle4x4 : MonoBehaviour
             wireCutPuzzle.ApplySqColor();
             Debug.Log("[SlidePuzzle4x4] Called wireCutPuzzle.ApplySqColor()");
         }
-        else
+
+        // ✅ ทำ fade และลบ object ที่ตั้งไว้
+        if (destroyWhenSolved != null)
+            StartCoroutine(FadeAndDestroy(destroyWhenSolved, fadeDuration));
+
+        // ✅ แสดงข้อความ SUCCESS ทันที
+        if (successText != null)
         {
-            Debug.LogWarning("[SlidePuzzle4x4] ⚠️ WireCutPuzzle not assigned in Inspector!");
+            successText.text = "SUCCESS";
+            successText.gameObject.SetActive(true);
         }
 
-        StartCoroutine(ClosePanel());
+        // ❌ ไม่ปิด panel เอง
+        // ❌ ห้ามกด tile หลังผ่านแล้ว (จัดการไว้แล้วใน MoveTile)
+    }
+
+    IEnumerator FadeAndDestroy(GameObject target, float duration)
+    {
+        SpriteRenderer sr = target.GetComponent<SpriteRenderer>();
+        Image img = target.GetComponent<Image>();
+
+        if (sr == null && img == null)
+        {
+            Destroy(target);
+            yield break;
+        }
+
+        float t = 0f;
+        Color originalColor = sr ? sr.color : img.color;
+
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float alpha = Mathf.Lerp(originalColor.a, 0f, t / duration);
+
+            if (sr)
+                sr.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
+            if (img)
+                img.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
+
+            yield return null;
+        }
+
+        Destroy(target);
     }
 
     int GetNearestGridIndex(Vector2 pos)
@@ -260,13 +314,6 @@ public class SlidePuzzle4x4 : MonoBehaviour
                 return false;
         }
         return Vector2.Distance(emptySlot.anchoredPosition, positions[15]) <= 0.1f;
-    }
-
-    IEnumerator ClosePanel()
-    {
-        yield return new WaitForSeconds(0.5f);
-        puzzlePanel.SetActive(false);
-        isOpen = false;
     }
 
     void CloseImmediately()

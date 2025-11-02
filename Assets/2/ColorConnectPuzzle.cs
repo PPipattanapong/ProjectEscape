@@ -23,7 +23,16 @@ public class ColorConnectPuzzle : MonoBehaviour
     public GameObject puzzleObject;
 
     [Header("Wire Reference")]
-    public WireCutPuzzle wireCutPuzzle;    // ✅ เรียกใช้ ApplyPodiumColor ตอนสำเร็จ
+    public WireCutPuzzle wireCutPuzzle;    // เรียกใช้ ApplyPodiumColor ตอนสำเร็จ
+
+    [Header("Extra Object To Destroy")]
+    public GameObject destroyWhenSolved;
+
+    [Header("Success Display")]
+    [Tooltip("ข้อความ SUCCESS ที่จะแสดงตอนผ่าน")]
+    public TextMeshProUGUI successText;
+    [Tooltip("ภาพที่จะขึ้นตอนผ่าน (เช่น icon หรือ symbol)")]
+    public Image successImage;
 
     [Header("Close Settings")]
     public float fadeDuration = 0.25f;
@@ -51,6 +60,12 @@ public class ColorConnectPuzzle : MonoBehaviour
             panelRect = puzzlePanel.GetComponent<RectTransform>();
         }
 
+        // ✅ ซ่อน SUCCESS text และ image ตอนเริ่ม
+        if (successText != null)
+            successText.gameObject.SetActive(false);
+        if (successImage != null)
+            successImage.gameObject.SetActive(false);
+
         if (puzzleObject != null && puzzleObject.GetComponent<Collider2D>() == null)
             puzzleObject.AddComponent<BoxCollider2D>();
 
@@ -67,7 +82,7 @@ public class ColorConnectPuzzle : MonoBehaviour
 
     void Update()
     {
-        // เปิด panel เมื่อคลิกวัตถุ
+        // ✅ เปิด panel เมื่อคลิกวัตถุ
         if (Input.GetMouseButtonDown(0) && !isOpen && !puzzleSolved)
         {
             Vector2 wp = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -80,7 +95,7 @@ public class ColorConnectPuzzle : MonoBehaviour
             }
         }
 
-        // ปิด panel เมื่อคลิคนอก
+        // ✅ ปิด panel เมื่อคลิคนอก panel
         if (isOpen && Input.GetMouseButtonDown(0))
         {
             if (!IsPointerOverPanel())
@@ -135,7 +150,8 @@ public class ColorConnectPuzzle : MonoBehaviour
     // ==== Drag ====
     public void OnCellDown(Cell cell)
     {
-        if (!isOpen || !cell.isEndpoint) return;
+        if (!isOpen || puzzleSolved) return; // ✅ หลังผ่านแล้วห้ามกดอีก
+        if (!cell.isEndpoint) return;
         if (lockedPaths.ContainsKey(cell.colorIndex)) return;
 
         AbortCurrentDrag();
@@ -182,7 +198,6 @@ public class ColorConnectPuzzle : MonoBehaviour
         if (!(cell.isEndpoint && cell.colorIndex == dragColorIndex && cell != currentPath[0]))
         {
             AbortCurrentDrag();
-            CloseImmediately();
         }
     }
 
@@ -235,28 +250,53 @@ public class ColorConnectPuzzle : MonoBehaviour
             puzzleSolved = true;
             Debug.Log("[ColorConnectPuzzle] Puzzle Solved!");
 
-            // ✅ เรียก WireCutPuzzle.ApplyPodiumColor()
             if (wireCutPuzzle != null)
-            {
                 wireCutPuzzle.ApplyPodiumColor();
-                Debug.Log("[ColorConnectPuzzle] Called wireCutPuzzle.ApplyPodiumColor()");
-            }
-            else
+
+            if (destroyWhenSolved != null)
+                StartCoroutine(FadeAndDestroy(destroyWhenSolved, fadeDuration));
+
+            // ✅ แสดงข้อความและภาพ SUCCESS ทันที
+            if (successText != null)
             {
-                Debug.LogWarning("[ColorConnectPuzzle] ⚠️ WireCutPuzzle not assigned in Inspector!");
+                successText.text = "SUCCESS";
+                successText.gameObject.SetActive(true);
+            }
+            if (successImage != null)
+            {
+                successImage.gameObject.SetActive(true);
             }
 
-            StartCoroutine(ClosePanel());
+            // ❌ ไม่ปิด panel เอง
         }
     }
 
-    void AbortCurrentDrag()
+    IEnumerator FadeAndDestroy(GameObject target, float duration)
     {
-        if (currentLine) Destroy(currentLine.gameObject);
-        isDragging = false;
-        dragColorIndex = -1;
-        currentPath.Clear();
-        currentLine = null;
+        SpriteRenderer sr = target.GetComponent<SpriteRenderer>();
+        Image img = target.GetComponent<Image>();
+
+        if (sr == null && img == null)
+        {
+            Destroy(target);
+            yield break;
+        }
+
+        float t = 0f;
+        Color original = sr ? sr.color : img.color;
+
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float alpha = Mathf.Lerp(original.a, 0f, t / duration);
+
+            if (sr) sr.color = new Color(original.r, original.g, original.b, alpha);
+            if (img) img.color = new Color(original.r, original.g, original.b, alpha);
+
+            yield return null;
+        }
+
+        Destroy(target);
     }
 
     bool IsAdjacent(Cell a, Cell b)
@@ -272,11 +312,12 @@ public class ColorConnectPuzzle : MonoBehaviour
         return RectTransformUtility.RectangleContainsScreenPoint(panelRect, Input.mousePosition, null);
     }
 
-    IEnumerator ClosePanel()
+    void CloseImmediately()
     {
-        yield return new WaitForSeconds(fadeDuration);
+        ResetPuzzle();
         puzzlePanel.SetActive(false);
         isOpen = false;
+        AbortCurrentDrag();
     }
 
     void ResetPuzzle()
@@ -310,13 +351,22 @@ public class ColorConnectPuzzle : MonoBehaviour
                 }
             }
         }
+
+        // ✅ ซ่อนข้อความและภาพ SUCCESS เมื่อรีเซ็ต
+        if (successText != null)
+            successText.gameObject.SetActive(false);
+        if (successImage != null)
+            successImage.gameObject.SetActive(false);
     }
 
-    void CloseImmediately()
+    void AbortCurrentDrag()
     {
-        ResetPuzzle();
-        puzzlePanel.SetActive(false);
-        isOpen = false;
-        AbortCurrentDrag();
+        if (currentLine)
+            Destroy(currentLine.gameObject);
+
+        isDragging = false;
+        dragColorIndex = -1;
+        currentPath.Clear();
+        currentLine = null;
     }
 }

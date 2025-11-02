@@ -9,8 +9,8 @@ EditorBuildSettings:
     path: Assets/Scenes/MainMenu.unity
     guid: 00dd8cccf16848945a4b0741c5864956
   - enabled: 1
-    path: Assets/Scenes/Credits.unity
-    guid: 950ab60b28864e04685f1a963ff88f42
+    path: Assets/Scenes/GameOver.unity
+    guid: 9ec84d7f3ef1bb040a4336829b810b24
   - enabled: 1
     path: Assets/Scenes/IntroScene.unity
     guid: 40d93f98fed915347941feef28274876
@@ -26,13 +26,4 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Room3.unity
     guid: c2d0ed445a25c5843952f476991b2fee
-  - enabled: 1
-    path: Assets/Scenes/GameOver.unity
-    guid: 9ec84d7f3ef1bb040a4336829b810b24
-  - enabled: 0
-    path: Assets/Scenes/nouse/Tutorial.unity
-    guid: 808f83ee859f63843a98da1596c760a3
-  - enabled: 0
-    path: Assets/Scenes/nouse/SampleScene.unity
-    guid: 8c9cfa26abfee488c85f1582747f6a02
   m_configObjects: {}

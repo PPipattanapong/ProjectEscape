@@ -27,9 +27,9 @@ public class SafePin : MonoBehaviour
     [Tooltip("จำนวนวินาทีที่จะลดเมื่อกรอกรหัสผิด")]
     public float wrongCodePenalty = 10f;
 
-    [Header("Flash Effect")]
+    [Header("Flash Effect (Wrong Code)")]
     [Tooltip("Panel สีแดงที่จะใช้ flash ตอนกรอกรหัสผิด")]
-    public GameObject damageFlashPanel; // ใช้ panel สีแดงเหมือน WirePuzzle
+    public GameObject damageFlashPanel;
     public float flashDuration = 0.3f;
     public float flashMaxAlpha = 0.6f;
 
@@ -60,7 +60,12 @@ public class SafePin : MonoBehaviour
         camController = mainCamera.GetComponent<RoomCameraController>();
 
         if (damageFlashPanel != null)
+        {
             damageFlashPanel.SetActive(false);
+            var img = damageFlashPanel.GetComponent<Image>();
+            if (img != null)
+                img.color = new Color(img.color.r, img.color.g, img.color.b, 0f);
+        }
     }
 
     void Update()
@@ -187,6 +192,8 @@ public class SafePin : MonoBehaviour
             if (keyReward != null)
                 StartCoroutine(FadeInReward(keyReward, 2f));
 
+            // ❌ ตัด Flash ตอนรหัสถูกออกไปแล้ว
+
             StartCoroutine(HandleAfterSolved());
             input = "";
         }
@@ -195,7 +202,7 @@ public class SafePin : MonoBehaviour
             Debug.Log("❌ Wrong code!");
             StartCoroutine(ShowTemporaryMessage("Wrong code!", 1.5f, Color.red));
 
-            // 🔻 Flash Effect ตอนรหัสผิด
+            // 🔻 Flash ตอนรหัสผิด
             if (damageFlashPanel != null)
                 StartCoroutine(FlashDamagePanel());
 
@@ -253,7 +260,6 @@ public class SafePin : MonoBehaviour
         Color baseColor = img.color;
         float t = 0f;
 
-        // Fade In (เร็ว)
         while (t < flashDuration * 0.3f)
         {
             t += Time.deltaTime;
@@ -262,7 +268,6 @@ public class SafePin : MonoBehaviour
             yield return null;
         }
 
-        // Fade Out (ช้า)
         t = 0f;
         while (t < flashDuration * 0.7f)
         {

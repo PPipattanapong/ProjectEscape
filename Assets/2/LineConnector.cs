@@ -1,26 +1,27 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
+using System.Collections.Generic;
 
 public class LineConnector : MonoBehaviour
 {
     [Header("Settings")]
     public Camera mainCamera;              // กล้องหลัก
-    public LineRenderer linePrefab;        // พรีแฟบของเส้น (LineRenderer)
+    public LineRenderer linePrefab;        // พรีแฟบของเส้น
     public Transform lineParent;           // ที่เก็บเส้นทั้งหมด
-    public WireCutPuzzle wireCutPuzzle;    // ✅ อ้างถึงสคริปต์ WireCutPuzzle ที่จะเรียกใช้ตอนสำเร็จ
+    public WireCutPuzzle wireCutPuzzle;    // เรียกใช้ตอนสำเร็จ
 
     [Header("Line Colors Per Pair")]
     public Color[] pairColors;             // สีแต่ละคู่ (A-1, B-2, ...)
 
+    [Header("Success Text (3D TMP)")]
+    public TextMeshPro successText;        // ✅ ใช้ TextMeshPro 3D ใน world space
+
     private LineRenderer currentLine;
     private Transform startPoint;
 
-    private Dictionary<string, string> correctPairs = new Dictionary<string, string>();
-    private Dictionary<string, Color> pairColorMap = new Dictionary<string, Color>();
-    private List<string> usedPoints = new List<string>();
+    private Dictionary<string, string> correctPairs = new();
+    private Dictionary<string, Color> pairColorMap = new();
+    private List<string> usedPoints = new();
 
     private bool puzzleSolved = false;
 
@@ -28,6 +29,10 @@ public class LineConnector : MonoBehaviour
     {
         if (mainCamera == null)
             mainCamera = Camera.main;
+
+        // ✅ ซ่อนข้อความ SUCCESS ตอนเริ่ม
+        if (successText != null)
+            successText.gameObject.SetActive(false);
 
         // ✅ ตั้งคู่ที่ถูกต้อง
         correctPairs.Add("A", "1");
@@ -53,7 +58,7 @@ public class LineConnector : MonoBehaviour
     {
         if (puzzleSolved) return;
 
-        // เริ่มลากจากจุดเริ่มต้น
+        // ✅ เริ่มลากจากจุดเริ่มต้น
         if (Input.GetMouseButtonDown(0))
         {
             Vector2 mousePos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
@@ -66,12 +71,12 @@ public class LineConnector : MonoBehaviour
                 currentLine.positionCount = 2;
                 currentLine.useWorldSpace = true;
 
-                // ✅ ตั้งค่าเริ่มเป็นสีขาว
+                // ✅ เส้นเริ่มต้นเป็น "สีดำ"
                 Gradient g = new Gradient();
                 g.SetKeys(
                     new GradientColorKey[] {
-                        new GradientColorKey(Color.white, 0f),
-                        new GradientColorKey(Color.white, 1f)
+                        new GradientColorKey(Color.black, 0f),
+                        new GradientColorKey(Color.black, 1f)
                     },
                     new GradientAlphaKey[] {
                         new GradientAlphaKey(1f, 0f),
@@ -80,14 +85,14 @@ public class LineConnector : MonoBehaviour
                 );
                 currentLine.colorGradient = g;
                 currentLine.material = new Material(currentLine.material);
-                currentLine.material.color = Color.white;
+                currentLine.material.color = Color.black;
 
                 currentLine.SetPosition(0, startPoint.position);
                 currentLine.SetPosition(1, startPoint.position);
             }
         }
 
-        // ระหว่างลาก
+        // ✅ ระหว่างลาก
         if (Input.GetMouseButton(0) && currentLine != null)
         {
             Vector3 mousePos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
@@ -95,7 +100,7 @@ public class LineConnector : MonoBehaviour
             currentLine.SetPosition(1, mousePos);
         }
 
-        // ปล่อยเมาส์
+        // ✅ ปล่อยเมาส์
         if (Input.GetMouseButtonUp(0) && currentLine != null)
         {
             Vector2 mousePos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
@@ -106,12 +111,12 @@ public class LineConnector : MonoBehaviour
                 string startName = startPoint.name;
                 string endName = hit.name;
 
-                // ✅ ตรวจจับคู่ถูก
+                // ตรวจคู่
                 if (correctPairs.ContainsKey(startName) && correctPairs[startName] == endName)
                 {
                     Color pairColor = pairColorMap[startName];
 
-                    // ✅ ตั้ง Gradient ใหม่เป็นสีคู่ที่เลือก
+                    // เปลี่ยนสีเส้นเป็นสีคู่ที่ถูก
                     Gradient successGradient = new Gradient();
                     successGradient.SetKeys(
                         new GradientColorKey[] {
@@ -133,22 +138,24 @@ public class LineConnector : MonoBehaviour
                     usedPoints.Add(startName);
                     usedPoints.Add(endName);
 
-                    // ✅ ถ้าต่อครบทุกคู่
+                    // ✅ เช็คครบทุกคู่
                     if (usedPoints.Count >= correctPairs.Count * 2 && !puzzleSolved)
                     {
                         puzzleSolved = true;
-
                         Debug.Log("[LineConnector] Puzzle Solved!");
 
-                        // ✅ เรียก WireCutPuzzle.ApplyStarColor()
+                        // เรียกใช้ WireCutPuzzle
                         if (wireCutPuzzle != null)
                         {
                             wireCutPuzzle.ApplyStarColor();
                             Debug.Log("[LineConnector] Called wireCutPuzzle.ApplyStarColor()");
                         }
-                        else
+
+                        // ✅ แสดงข้อความ SUCCESS
+                        if (successText != null)
                         {
-                            Debug.LogWarning("[LineConnector] ⚠️ WireCutPuzzle not assigned in Inspector!");
+                            successText.text = "SUCCESS";
+                            successText.gameObject.SetActive(true);
                         }
                     }
                 }

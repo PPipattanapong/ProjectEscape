@@ -26,14 +26,13 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
     public GameObject coloredPodium;
     public GameObject coloredSq;
 
-    [Header("Flash Effect")]
+    [Header("Flash Effect (Failure)")]
     public GameObject damageFlashPanel;
     public float flashDuration = 0.3f;
     public float flashMaxAlpha = 0.6f;
 
     [Header("Scene Settings")]
     public string failSceneName;
-
 
     private int currentStep = 0;
     private bool failed = false;
@@ -47,7 +46,6 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
 
         if (damageFlashPanel != null)
             damageFlashPanel.SetActive(false);
-
 
         bombTimer = FindObjectOfType<BombTime>();
 
@@ -66,7 +64,7 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
         }
     }
 
-    // 🎲 สุ่มลำดับ 3 ค่า จาก 0–3 โดยไม่ซ้ำ
+#if UNITY_EDITOR
     private void ShuffleSequence()
     {
         List<int> pool = new List<int> { 0, 1, 2, 3 };
@@ -79,14 +77,24 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
             pool.RemoveAt(r);
         }
 
-#if UNITY_EDITOR
         EditorUtility.SetDirty(this);
-#endif
-
         Debug.Log("[WireCutPuzzle] Randomized 3-wire sequence: " + string.Join(", ", correctSequence));
     }
+#else
+    private void ShuffleSequence()
+    {
+        List<int> pool = new List<int> { 0, 1, 2, 3 };
+        correctSequence.Clear();
+        for (int i = 0; i < 3; i++)
+        {
+            int r = Random.Range(0, pool.Count);
+            correctSequence.Add(pool[r]);
+            pool.RemoveAt(r);
+        }
+        Debug.Log("[WireCutPuzzle] Randomized 3-wire sequence: " + string.Join(", ", correctSequence));
+    }
+#endif
 
-    // 🎨 ฟังก์ชันภายในใช้ย้อมสี
     private void ApplyColor(GameObject target, int sequenceIndex)
     {
         if (target == null || sequenceIndex < 0 || sequenceIndex >= correctSequence.Count)
@@ -95,7 +103,6 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
         int colorIndex = correctSequence[sequenceIndex];
         Color c = (colorIndex >= 0 && colorIndex < wireColors.Count) ? wireColors[colorIndex] : Color.gray;
 
-        // รองรับทั้ง SpriteRenderer และ Image
         var sr = target.GetComponent<SpriteRenderer>();
         if (sr != null)
             sr.color = c;
@@ -111,7 +118,6 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
 #endif
     }
 
-    // 🟡 ย้อมสีทีละช่อง
     public void ApplyStarColor()
     {
         if (!colorRevealed[0])
@@ -176,9 +182,7 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
                 if (light != null)
                     light.MarkPuzzleComplete();
 
-
-                // ตอนสำเร็จ คุณจะเลือกเองว่าจะโชว์สีไหน
-                // เช่น เรียก ApplyStarColor(); หรือทั้งหมดก็ได้
+                // ❌ ไม่ต้อง Flash ตอนสำเร็จอีกต่อไป
                 return;
             }
         }
@@ -202,6 +206,7 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
         }
     }
 
+    // ⚡ Flash สีแดงตอนพลาดเท่านั้น
     private IEnumerator FlashDamagePanel()
     {
         if (damageFlashPanel == null) yield break;
@@ -213,6 +218,7 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
         Color baseColor = img.color;
         float t = 0f;
 
+        // fade in
         while (t < flashDuration * 0.3f)
         {
             t += Time.deltaTime;
@@ -221,6 +227,7 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
             yield return null;
         }
 
+        // fade out
         t = 0f;
         while (t < flashDuration * 0.7f)
         {

@@ -30,12 +30,11 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
     [Tooltip("จำนวนวินาทีที่จะลดเมื่อผู้เล่นลากออกนอกเส้น")]
     public float outOfPathPenalty = 10f;
 
-    [Header("Flash Effect")]
+    [Header("Flash Effect (Penalty)")]
     [Tooltip("Panel สีแดงที่จะใช้ flash ตอนโดนลงโทษ")]
-    public GameObject damageFlashPanel; // 🔥 ใส่ Panel UI ที่เป็นสีแดงเต็มจอ
-
-    public float flashDuration = 0.3f; // เวลา flash ทั้งหมด
-    public float flashMaxAlpha = 0.6f; // ความเข้มสูงสุดตอน flash
+    public GameObject damageFlashPanel;
+    public float flashDuration = 0.3f;
+    public float flashMaxAlpha = 0.6f;
 
     private bool isDragging = false;
     private bool solved = false;
@@ -61,7 +60,12 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         startOriginalPos = startObject.transform.position;
 
         if (damageFlashPanel != null)
+        {
             damageFlashPanel.SetActive(false);
+            var img = damageFlashPanel.GetComponent<Image>();
+            if (img != null)
+                img.color = new Color(img.color.r, img.color.g, img.color.b, 0f);
+        }
     }
 
     public void OnItemUsed(string itemName)
@@ -136,7 +140,7 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         {
             Debug.LogWarning("[WirePuzzle] ❌ Out of red — Reset!");
 
-            // 🔻 Flash Panel
+            // 🔻 Flash แดง
             if (damageFlashPanel != null)
                 StartCoroutine(FlashDamagePanel());
 
@@ -168,7 +172,6 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         Color baseColor = img.color;
         float t = 0f;
 
-        // Fade In (เร็ว)
         while (t < flashDuration * 0.3f)
         {
             t += Time.deltaTime;
@@ -177,7 +180,6 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
             yield return null;
         }
 
-        // Fade Out (ช้า)
         t = 0f;
         while (t < flashDuration * 0.7f)
         {
@@ -210,6 +212,8 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         isDragging = false;
         solved = true;
         doorLight.SetGreen();
+
+        // ❌ ลบ Flash ขาวตอนผ่านออกไปแล้ว
 
         fieldObject.SetActive(false);
         startObject.SetActive(false);

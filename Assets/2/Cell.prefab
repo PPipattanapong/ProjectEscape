@@ -90,11 +90,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   x: 0
   y: 0
-  bgImage: {fileID: 7338572489205760381}
-  nodeImage: {fileID: 7338572489205760381}
-  baseGray: {r: 0.25, g: 0.25, b: 0.25, a: 1}
-  tintEndpointBG: 1
-  endpointBgLerp: 0.65
-  endpointNodeScale: 0.9
   isEndpoint: 0
   colorIndex: -1

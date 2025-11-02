@@ -12,15 +12,15 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
     public GameObject unlockObject;  // Object ใหม่ที่จะ active เมื่อผ่าน
 
     [Header("Accepted Items")]
-    public string[] acceptedItems;   // รายชื่อไอเทมที่ใช้เปิดได้
+    public string[] acceptedItems;
 
     [Header("Effects")]
-    public Color startColor = Color.red;    // สีเริ่มต้น (เช่นแดง)
-    public Color solvedColor = Color.white; // สีเป้าหมาย (เช่นขาว)
-    public float fadeDuration = 2f;         // ระยะเวลา fade
+    public Color startColor = Color.red;
+    public Color solvedColor = Color.white;
+    public float fadeDuration = 2f;
 
     [Header("Extra Object To Destroy")]
-    public GameObject destroyWhenSolved;    // 👈 ตั้งใน Inspector ได้เลย
+    public GameObject destroyWhenSolved;
 
     private Quaternion targetRotation;
     private bool isPanelActive;
@@ -41,7 +41,6 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
             unlockObject.SetActive(false);
     }
 
-    // ✅ รับไอเทมจาก InventorySlot
     public void OnItemUsed(string itemName)
     {
         Debug.Log("[RotatePuzzle] Received item: " + itemName);
@@ -108,8 +107,8 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
         return false;
     }
 
-    public void RotateLeft() => Rotate(90);   // ⬅ ซ้าย = +90
-    public void RotateRight() => Rotate(-90); // ➡ ขวา = -90
+    public void RotateLeft() => Rotate(90);
+    public void RotateRight() => Rotate(-90);
 
     void Rotate(float angle)
     {
@@ -122,8 +121,25 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
             Debug.Log("[RotatePuzzle] Puzzle Solved!");
             ClosePanel();
 
-            // ✅ เอฟเฟกต์ fade เมื่อแก้ได้
+            // ✅ ลบไอเท็มจาก inventory ทันทีเมื่อผ่าน
+            RemoveUsedItemInstantly();
+
+            // ✅ เริ่ม fade สีและปลดล็อกวัตถุ
             StartCoroutine(FadeSolvedEffects());
+        }
+    }
+
+    private void RemoveUsedItemInstantly()
+    {
+        InventorySlot[] slots = FindObjectsOfType<InventorySlot>();
+        foreach (var slot in slots)
+        {
+            if (slot.currentItem != null && slot.currentItem.itemName == "Sign")
+            {
+                slot.ClearSlot();
+                Debug.Log("[RotatePuzzle] Removed 'Sign' from inventory instantly");
+                break;
+            }
         }
     }
 
@@ -175,21 +191,10 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
             if (sr != null) sr.color = solvedColor;
         }
 
-        // ✅ ลบไอเท็ม "Sign" ออกจาก inventory (แต่อย่าแตะช่อง)
-        InventorySlot[] slots = FindObjectsOfType<InventorySlot>();
-        foreach (var slot in slots)
-        {
-            if (slot.currentItem != null && slot.currentItem.itemName == "Sign")
-            {
-                slot.ClearSlot();
-                Debug.Log("[RotatePuzzle] Cleared 'Sign' item from inventory");
-            }
-        }
-
-        // ✅ Sync ตัวพื้นหลังกับตัวหมุน
+        // ✅ ซิงค์การหมุน
         transform.rotation = other.transform.rotation;
 
-        // ✅ ถ้ามี object ที่ต้องหายหลัง solved → fade out แล้ว destroy
+        // ✅ ทำลาย object ที่ตั้งไว้
         if (destroyWhenSolved != null)
             StartCoroutine(FadeAndDestroy(destroyWhenSolved, fadeDuration));
     }
