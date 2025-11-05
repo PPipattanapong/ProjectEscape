@@ -19688,7 +19688,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1279056850}
   - component: {fileID: 1279056853}
-  - component: {fileID: 1279056854}
   - component: {fileID: 1279056855}
   m_Layer: 0
   m_Name: Door
@@ -19764,21 +19763,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &1279056854
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1279056849}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6014f67ba12647048840318b1d6450c0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  requiredItem: Keycard
-  unlockTarget: {fileID: 1638357209}
-  objectToDisable: {fileID: 1279056849}
 --- !u!61 &1279056855
 BoxCollider2D:
   m_ObjectHideFlags: 0
