@@ -337,4 +337,14 @@ public class SafePin : MonoBehaviour
             StartCoroutine(ZoomOutAndClose());
         }
     }
+
+    // ✅ ใช้สำหรับกดปุ่ม TextMeshPro (หรือปุ่มอื่น) เพื่อปิด panel
+    public void OnButtonClickOutside()
+    {
+        if (safePanel != null && safePanel.activeSelf && !isZooming)
+        {
+            ClosePanel(true);
+        }
+    }
+
 }

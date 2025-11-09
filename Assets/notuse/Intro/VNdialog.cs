@@ -7,7 +7,8 @@ using UnityEngine.UI;
 public class VNDialogueManager : MonoBehaviour
 {
     [Header("UI References")]
-    public TextMeshProUGUI dialogueText;
+    public TextMeshProUGUI dialogueText;   // ข้อความบทพูด
+    public TextMeshProUGUI speakerText;    // ชื่อผู้พูด
     public Button skipButton;
 
     [Header("Dialogue Settings")]
@@ -17,10 +18,10 @@ public class VNDialogueManager : MonoBehaviour
     public string nextSceneName = "GameScene";
 
     [Header("Effect References")]
-    public Image blackScreenImage;   // รูปดำ
-    public Image eyeImage;           // ตาปรือ
-    public Image sceneImage1;        // ภาพหลังลืมตา
-    public Image sceneImage2;        // ภาพสุดท้าย
+    public Image blackScreenImage;
+    public Image eyeImage;
+    public Image sceneImage1;
+    public Image sceneImage2;
 
     public float fadeDuration = 2f;
 
@@ -32,11 +33,14 @@ public class VNDialogueManager : MonoBehaviour
     {
         skipButton.onClick.AddListener(SkipToGame);
 
-        // แสดง eyeImage ตั้งแต่ต้น (Opacity 1), รูปอื่นโปร่งใส ยกเว้นดำ
-        SetAlpha(blackScreenImage, 1f); // เริ่มมืด
-        SetAlpha(eyeImage, 1f);         // โชว์ตั้งแต่แรก
+        // ✅ ตั้งค่าเริ่มต้น
+        SetAlpha(blackScreenImage, 1f);
+        SetAlpha(eyeImage, 1f);
         SetAlpha(sceneImage1, 0f);
         SetAlpha(sceneImage2, 0f);
+
+        sceneImage1.gameObject.SetActive(false);
+        sceneImage2.gameObject.SetActive(false);
 
         StartCoroutine(TypeLine());
     }
@@ -44,9 +48,7 @@ public class VNDialogueManager : MonoBehaviour
     void Update()
     {
         if (Input.GetMouseButtonDown(0))
-        {
             OnDialogueClick();
-        }
     }
 
     void OnDialogueClick()
@@ -59,7 +61,6 @@ public class VNDialogueManager : MonoBehaviour
         {
             currentLineIndex++;
 
-            // ✅ ถ้าเกินบรรทัดสุดท้าย → โหลดฉาก
             if (currentLineIndex >= dialogueLines.Length)
             {
                 SceneManager.LoadScene(nextSceneName);
@@ -76,31 +77,42 @@ public class VNDialogueManager : MonoBehaviour
         skipTyping = false;
         dialogueText.text = "";
 
-        // ลืมตา (แค่ fade out ภาพดำ)
+        // 🔹 ตรวจว่าเป็นบรรทัดที่มีการเปลี่ยนภาพไหม
+        bool shouldFade = (currentLineIndex == 2 || currentLineIndex == 6 || currentLineIndex == 10);
+
         if (currentLineIndex == 2)
-        {
             yield return StartCoroutine(FadeOutOnly(blackScreenImage));
-        }
 
-        // เปลี่ยนภาพ (จากตาปรือ → sceneImage1)
-        if (currentLineIndex == 8)
-        {
+        if (currentLineIndex == 6)
             yield return StartCoroutine(FadeImages(eyeImage, sceneImage1));
-        }
 
-        // เปลี่ยนภาพ (จาก sceneImage1 → sceneImage2)
-        if (currentLineIndex == 11)
-        {
+        if (currentLineIndex == 10)
             yield return StartCoroutine(FadeImages(sceneImage1, sceneImage2));
-        }
 
         string line = dialogueLines[currentLineIndex];
+        string speaker = "";
+        string message = line;
 
-        foreach (char c in line)
+        int colonIndex = line.IndexOf(':');
+        if (colonIndex > 0)
+        {
+            speaker = line.Substring(0, colonIndex).Trim();
+            message = line.Substring(colonIndex + 1).Trim();
+        }
+
+        speakerText.text = speaker;
+
+        // 🔹 Fade in เฉพาะกรณีที่มีการสลับภาพ
+        if (shouldFade)
+            yield return StartCoroutine(FadeInText());
+        else
+            SetTextAlpha(1f); // ปกติให้แสดงทันที
+
+        foreach (char c in message)
         {
             if (skipTyping)
             {
-                dialogueText.text = line;
+                dialogueText.text = message;
                 break;
             }
 
@@ -113,6 +125,11 @@ public class VNDialogueManager : MonoBehaviour
 
     IEnumerator FadeOutOnly(Image image)
     {
+        // 🔹 ซ่อนข้อความและชื่อผู้พูดก่อนเริ่ม fade
+        dialogueText.text = "";
+        speakerText.text = "";
+        SetTextAlpha(0f);
+
         float timer = 0f;
         while (timer < fadeDuration)
         {
@@ -122,26 +139,59 @@ public class VNDialogueManager : MonoBehaviour
             yield return null;
         }
         SetAlpha(image, 0f);
+        image.gameObject.SetActive(false);
     }
 
     IEnumerator FadeImages(Image fromImage, Image toImage)
     {
-        float timer = 0f;
-        SetAlpha(toImage, 0f); // เริ่มจากโปร่งใส
+        // 🔹 ซ่อนข้อความและชื่อผู้พูดก่อนเริ่ม fade
+        dialogueText.text = "";
+        speakerText.text = "";
+        SetTextAlpha(0f);
 
-        while (timer < fadeDuration)
+        // ✅ ขั้นแรก: ทำให้ภาพดำ fade-in ปิดจอ
+        blackScreenImage.gameObject.SetActive(true);
+        float timer = 0f;
+
+        while (timer < fadeDuration / 2f)
         {
             timer += Time.deltaTime;
-            float t = timer / fadeDuration;
-
-            SetAlpha(fromImage, Mathf.Lerp(1f, 0f, t));
-            SetAlpha(toImage, Mathf.Lerp(0f, 1f, t));
-
+            float alpha = Mathf.Lerp(0f, 1f, timer / (fadeDuration / 2f));
+            SetAlpha(blackScreenImage, alpha);
             yield return null;
         }
 
+        // ✅ พอจอดำแล้ว: ปิดภาพเก่า เปิดภาพใหม่
         SetAlpha(fromImage, 0f);
+        fromImage.gameObject.SetActive(false);
+        toImage.gameObject.SetActive(true);
         SetAlpha(toImage, 1f);
+
+        // ✅ แล้วค่อย fade-out จากดำกลับมาภาพใหม่
+        timer = 0f;
+        while (timer < fadeDuration / 2f)
+        {
+            timer += Time.deltaTime;
+            float alpha = Mathf.Lerp(1f, 0f, timer / (fadeDuration / 2f));
+            SetAlpha(blackScreenImage, alpha);
+            yield return null;
+        }
+
+        SetAlpha(blackScreenImage, 0f);
+        blackScreenImage.gameObject.SetActive(false);
+    }
+
+    IEnumerator FadeInText()
+    {
+        float timer = 0f;
+        while (timer < fadeDuration / 2f)
+        {
+            timer += Time.deltaTime;
+            float alpha = Mathf.Lerp(0f, 1f, timer / (fadeDuration / 2f));
+            SetTextAlpha(alpha);
+            yield return null;
+        }
+        SetTextAlpha(1f);
     }
 
     void SetAlpha(Image img, float alpha)
@@ -150,6 +200,23 @@ public class VNDialogueManager : MonoBehaviour
         Color c = img.color;
         c.a = alpha;
         img.color = c;
+    }
+
+    void SetTextAlpha(float alpha)
+    {
+        if (dialogueText != null)
+        {
+            Color c = dialogueText.color;
+            c.a = alpha;
+            dialogueText.color = c;
+        }
+
+        if (speakerText != null)
+        {
+            Color c = speakerText.color;
+            c.a = alpha;
+            speakerText.color = c;
+        }
     }
 
     void SkipToGame()

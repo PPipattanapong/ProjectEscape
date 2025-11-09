@@ -12,7 +12,7 @@ public class SlidePuzzle4x4 : MonoBehaviour
     public List<Button> tiles;             // ปุ่ม 1–15
     public RectTransform emptySlot;        // ช่องว่าง
     public GameObject puzzleObject;
-    public Button shuffleButton;
+    public Button shuffleButton;           // ปุ่ม RESET
 
     [Header("Cheat Settings")]
     public Button cheatButton;
@@ -48,7 +48,7 @@ public class SlidePuzzle4x4 : MonoBehaviour
 
         if (successText != null)
         {
-            successText.gameObject.SetActive(false); // ซ่อนไว้จนกว่าจะผ่าน
+            successText.gameObject.SetActive(false);
         }
 
         if (puzzleObject != null && puzzleObject.GetComponent<Collider2D>() == null)
@@ -57,10 +57,16 @@ public class SlidePuzzle4x4 : MonoBehaviour
         SetupGrid();
         SetupButtons();
 
+        // ✅ ตั้งค่าปุ่มให้เป็น RESET
         if (shuffleButton != null)
-            shuffleButton.onClick.AddListener(ShuffleTiles);
+        {
+            shuffleButton.onClick.AddListener(ResetTilesToStart);
+            TextMeshProUGUI btnText = shuffleButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (btnText != null) btnText.text = "RESET";
+        }
 
-        ShuffleTiles();
+        // ✅ เรียงเกือบครบตั้งแต่เริ่มเกม
+        ResetTilesToStart();
 
         if (cheatButton != null)
             cheatButton.onClick.AddListener(CheatSolve);
@@ -128,7 +134,7 @@ public class SlidePuzzle4x4 : MonoBehaviour
             }
         }
 
-        // ✅ ปิด panel เมื่อคลิกนอก panel (หลังผ่านก็ยังคลิกนอกเพื่อปิดได้)
+        // ✅ ปิด panel เมื่อคลิกนอก panel
         if (isOpen && Input.GetMouseButtonDown(0))
         {
             if (!IsPointerOverPanel())
@@ -195,9 +201,6 @@ public class SlidePuzzle4x4 : MonoBehaviour
             successText.text = "SUCCESS";
             successText.gameObject.SetActive(true);
         }
-
-        // ❌ ไม่ปิด panel เอง
-        // ❌ ห้ามกด tile หลังผ่านแล้ว (จัดการไว้แล้วใน MoveTile)
     }
 
     IEnumerator FadeAndDestroy(GameObject target, float duration)
@@ -253,57 +256,47 @@ public class SlidePuzzle4x4 : MonoBehaviour
         return Mathf.Abs(ax - bx) + Mathf.Abs(ay - by) == 1;
     }
 
-    void ShuffleTiles()
+    // ✅ เรียงเกือบครบตั้งแต่เริ่มเกม + reset เมื่อกดปุ่ม
+    void ResetTilesToStart()
     {
-        List<int> order = new List<int>();
-        for (int i = 0; i < 16; i++) order.Add(i);
+        Debug.Log("🔁 Reset puzzle to custom starting layout (ตามภาพ).");
 
-        do
-        {
-            for (int i = 0; i < order.Count; i++)
-            {
-                int rand = Random.Range(i, order.Count);
-                (order[i], order[rand]) = (order[rand], order[i]);
-            }
-        } while (!IsSolvable(order));
+        // วางตำแหน่ง tile 1–15 ให้ตรงกับรูปที่ให้มา
+        // ดัชนีตำแหน่งใน positions[] ไล่จากบนซ้าย (0) ถึงล่างขวา (15)
+        // แถวละ 4 ตำแหน่ง => 0-3, 4-7, 8-11, 12-15
 
-        for (int i = 0; i < 15; i++)
-        {
-            tiles[i].GetComponent<RectTransform>().anchoredPosition = positions[order[i]];
-        }
+        // แถว 1: 1 2 3 4
+        tiles[0].GetComponent<RectTransform>().anchoredPosition = positions[0];
+        tiles[1].GetComponent<RectTransform>().anchoredPosition = positions[1];
+        tiles[2].GetComponent<RectTransform>().anchoredPosition = positions[2];
+        tiles[3].GetComponent<RectTransform>().anchoredPosition = positions[3];
 
-        emptyIndex = order[15];
-        emptySlot.anchoredPosition = positions[emptyIndex];
+        // แถว 2: 5 6 7 8
+        tiles[4].GetComponent<RectTransform>().anchoredPosition = positions[4];
+        tiles[5].GetComponent<RectTransform>().anchoredPosition = positions[5];
+        tiles[6].GetComponent<RectTransform>().anchoredPosition = positions[6];
+        tiles[7].GetComponent<RectTransform>().anchoredPosition = positions[7];
+
+        // แถว 3: 11 10 [empty] 9
+        tiles[10].GetComponent<RectTransform>().anchoredPosition = positions[8];
+        tiles[9].GetComponent<RectTransform>().anchoredPosition = positions[9];
+        tiles[8].GetComponent<RectTransform>().anchoredPosition = positions[11];
+        emptyIndex = 10;
+        emptySlot.anchoredPosition = positions[10];
+
+        // แถว 4: 13 12 15 14
+        tiles[12].GetComponent<RectTransform>().anchoredPosition = positions[12];
+        tiles[11].GetComponent<RectTransform>().anchoredPosition = positions[13];
+        tiles[14].GetComponent<RectTransform>().anchoredPosition = positions[14];
+        tiles[13].GetComponent<RectTransform>().anchoredPosition = positions[15];
+
         puzzleSolved = false;
+
+        // ปิด success text ถ้ามี
+        if (successText != null)
+            successText.gameObject.SetActive(false);
     }
 
-    bool IsSolvable(List<int> order)
-    {
-        int inversions = 0;
-        for (int i = 0; i < 15; i++)
-        {
-            for (int j = i + 1; j < 15; j++)
-            {
-                if (order[i] < 15 && order[j] < 15 && order[i] > order[j])
-                    inversions++;
-            }
-        }
-
-        int emptyRowFromBottom = 4 - (order.IndexOf(15) / 4);
-        bool evenGrid = 4 % 2 == 0;
-
-        if (evenGrid)
-        {
-            if (emptyRowFromBottom % 2 == 0)
-                return inversions % 2 == 1;
-            else
-                return inversions % 2 == 0;
-        }
-        else
-        {
-            return inversions % 2 == 0;
-        }
-    }
 
     bool CheckWin()
     {

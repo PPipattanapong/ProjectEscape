@@ -270,6 +270,7 @@ GameObject:
   - component: {fileID: 419286219}
   - component: {fileID: 419286221}
   - component: {fileID: 419286220}
+  - component: {fileID: 419286222}
   m_Layer: 5
   m_Name: GameOver
   m_TagString: Untagged
@@ -393,6 +394,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 419286218}
   m_CullTransparentMesh: 1
+--- !u!114 &419286222
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 419286218}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 680260b0cc4ff40499af1f48684f5731, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  tmpText: {fileID: 419286220}
+  glitchChance: 0.01
+  glitchDuration: 1
 --- !u!1 &508378153
 GameObject:
   m_ObjectHideFlags: 0
@@ -754,6 +770,7 @@ GameObject:
   - component: {fileID: 859875552}
   - component: {fileID: 859875554}
   - component: {fileID: 859875553}
+  - component: {fileID: 859875555}
   m_Layer: 5
   m_Name: ASK
   m_TagString: Untagged
@@ -809,8 +826,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+    rgba: 4289374890
+  m_fontColor: {r: 0.6679245, g: 0.6679245, b: 0.6679245, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -877,6 +894,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 859875551}
   m_CullTransparentMesh: 1
+--- !u!114 &859875555
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 859875551}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ae310a61b29a66468478ec185458339, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  tmpText: {fileID: 859875553}
+  pulseSpeed: 2
+  baseColor: {r: 0.67058825, g: 0.67058825, b: 0.67058825, a: 1}
+  pulseColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &1363265037
 GameObject:
   m_ObjectHideFlags: 0
