@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class DoorController : MonoBehaviour, IItemReceiver
 {
@@ -18,6 +19,10 @@ public class DoorController : MonoBehaviour, IItemReceiver
     [Header("Fade Settings")]
     public float fadeDuration = 1.5f;
 
+    // ⭐ ใหม่: ลิสต์ของ Object ที่ต้องลบ Tooltip เมื่อประตูเปิด
+    [Header("Tooltip To Delete When Door Opens")]
+    public List<GameObject> tooltipObjects = new List<GameObject>();
+
     private bool keyInserted = false;
     private Collider2D doorCollider;
 
@@ -25,7 +30,6 @@ public class DoorController : MonoBehaviour, IItemReceiver
     {
         doorCollider = GetComponent<Collider2D>();
 
-        // ปิด target ตั้งแต่แรก
         if (unlockTarget != null)
             unlockTarget.SetActive(false);
     }
@@ -52,20 +56,26 @@ public class DoorController : MonoBehaviour, IItemReceiver
     {
         Debug.Log($"CheckDoor → left:{leftLight.isGreen}, right:{rightLight.isGreen}, key:{keyInserted}");
 
-        // ✅ ถ้าไฟซ้าย-ขวาเขียว และใส่กุญแจแล้ว → ประตูเปิด
         if (leftLight.isGreen && rightLight.isGreen && keyInserted)
         {
             Debug.Log("✅ Door opened!");
 
-            // ปิด collider เพื่อให้เดินผ่านได้
             if (doorCollider != null)
                 doorCollider.enabled = false;
 
-            // โชว์วัตถุปลายทาง
             if (unlockTarget != null)
                 unlockTarget.SetActive(true);
 
-            // ✅ ทำ fade และลบ object ที่ตั้งไว้
+            // 🔥 ลบ Tooltip ทุกอันที่กำหนด
+            foreach (var obj in tooltipObjects)
+            {
+                if (obj == null) continue;
+
+                Tooltip t = obj.GetComponent<Tooltip>();
+                if (t != null)
+                    Destroy(t);
+            }
+
             if (destroyWhenOpened != null)
                 StartCoroutine(FadeAndDestroy(destroyWhenOpened, fadeDuration));
         }
@@ -76,7 +86,6 @@ public class DoorController : MonoBehaviour, IItemReceiver
         SpriteRenderer sr = target.GetComponent<SpriteRenderer>();
         UnityEngine.UI.Image img = target.GetComponent<UnityEngine.UI.Image>();
 
-        // ถ้าไม่มี Renderer หรือ Image → ลบทันที
         if (sr == null && img == null)
         {
             Destroy(target);

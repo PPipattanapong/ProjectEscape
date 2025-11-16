@@ -34,6 +34,9 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
     [Header("Scene Settings")]
     public string failSceneName;
 
+    [Header("Tooltip To Remove On Success")]
+    public List<GameObject> objectsToRemoveTooltip = new List<GameObject>();
+
     private int currentStep = 0;
     private bool failed = false;
     private bool solved = false;
@@ -182,7 +185,20 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
                 if (light != null)
                     light.MarkPuzzleComplete();
 
-                // ❌ ไม่ต้อง Flash ตอนสำเร็จอีกต่อไป
+                // ⭐ ลบ tooltip ทั้งหมดที่มึงกำหนดไว้
+                foreach (var obj in objectsToRemoveTooltip)
+                {
+                    if (obj != null)
+                    {
+                        Tooltip t = obj.GetComponent<Tooltip>();
+                        if (t != null)
+                        {
+                            Destroy(t);
+                            Debug.Log("[WireCutPuzzle] Removed Tooltip on: " + obj.name);
+                        }
+                    }
+                }
+
                 return;
             }
         }

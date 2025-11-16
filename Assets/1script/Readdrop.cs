@@ -3,6 +3,7 @@ using TMPro;
 using System.Collections;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 public class Readdrop : MonoBehaviour
 {
@@ -26,7 +27,10 @@ public class Readdrop : MonoBehaviour
     public float fadeDuration = 1.5f;
 
     [Header("Extra Object To Destroy")]
-    public GameObject destroyWhenSolved;   // 👈 ใส่ใน Inspector ได้เลย (เช่น hint วิบวับ)
+    public GameObject destroyWhenSolved;
+
+    [Header("Tooltip To Disable After Solved")]
+    public List<GameObject> tooltipObjects = new List<GameObject>();
 
     private bool solved = false;
     private bool sawLastPage = false;
@@ -61,6 +65,8 @@ public class Readdrop : MonoBehaviour
 
         panel.SetActive(true);
         currentPage = 0;
+
+        ShowPagesInstant();
         StartCoroutine(RefreshPageAfterOpen());
     }
 
@@ -78,6 +84,7 @@ public class Readdrop : MonoBehaviour
         {
             currentPage += 2;
             ShowPagesInstant();
+
             if (currentPage + 1 >= pages.Length - 1)
                 sawLastPage = true;
         }
@@ -91,6 +98,7 @@ public class Readdrop : MonoBehaviour
         {
             currentPage -= 2;
             ShowPagesInstant();
+
             if (sawLastPage && currentPage <= 0)
                 PuzzleSolved();
         }
@@ -101,9 +109,6 @@ public class Readdrop : MonoBehaviour
         if (pageTextLeft != null)
             pageTextLeft.text = $"{currentPage + 1}/{pages.Length}";
 
-        if (hintTextLeft != null && currentPage < pages.Length)
-            hintTextLeft.text = pages[currentPage];
-
         if (pageTextRight != null)
         {
             if (currentPage + 1 < pages.Length)
@@ -112,18 +117,43 @@ public class Readdrop : MonoBehaviour
                 pageTextRight.text = "-";
         }
 
+        if (hintTextLeft != null && currentPage < pages.Length)
+            hintTextLeft.text = ColorAndUnderlineDigits(pages[currentPage]);
+
         if (hintTextRight != null)
         {
             if (currentPage + 1 < pages.Length)
-                hintTextRight.text = pages[currentPage + 1];
+                hintTextRight.text = ColorAndUnderlineDigits(pages[currentPage + 1]);
             else
                 hintTextRight.text = "";
         }
     }
 
+    private string ColorAndUnderlineDigits(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        return System.Text.RegularExpressions.Regex.Replace(
+            text,
+            @"\b\d+\b",
+            m => $"<color=red><u>{m.Value}</u></color>"
+        );
+    }
+
     private void PuzzleSolved()
     {
         solved = true;
+
+        // 🔥 ลบ Tooltip ออกจาก objects ที่กำหนด
+        foreach (GameObject obj in tooltipObjects)
+        {
+            if (obj == null) continue;
+
+            Tooltip t = obj.GetComponent<Tooltip>();
+            if (t != null)
+                Destroy(t);    // ลบสคริปต์ Tooltip ออกไปเลย
+        }
 
         if (noteLeft != null && panel != null)
             StartCoroutine(FadeInNoteAndFadeOutPanel(noteLeft, panel, fadeDuration));
@@ -134,7 +164,6 @@ public class Readdrop : MonoBehaviour
         Collider2D col = GetComponent<Collider2D>();
         if (col != null) col.enabled = false;
 
-        // 🟡 เรียกให้ลบ object ที่ตั้งไว้ใน Inspector (แบบ fade-out)
         if (destroyWhenSolved != null)
             StartCoroutine(FadeAndDestroy(destroyWhenSolved, fadeDuration));
 
@@ -143,7 +172,6 @@ public class Readdrop : MonoBehaviour
 
     private IEnumerator FadeAndDestroy(GameObject target, float duration)
     {
-        // รองรับทั้ง SpriteRenderer และ Image
         SpriteRenderer sr = target.GetComponent<SpriteRenderer>();
         Image img = target.GetComponent<Image>();
 
@@ -175,43 +203,57 @@ public class Readdrop : MonoBehaviour
         noteObj.SetActive(true);
 
         SpriteRenderer sr = noteObj.GetComponent<SpriteRenderer>();
-        Color noteColor = Color.white;
         if (sr != null)
         {
-            noteColor = sr.color;
-            noteColor.a = 0f;
-            sr.color = noteColor;
+            Color c = sr.color;
+            c.a = 0f;
+            sr.color = c;
         }
 
         Image img = panelObj.GetComponent<Image>();
-        Color panelColor = Color.white;
         if (img != null)
         {
-            panelColor = img.color;
-            panelColor.a = 1f;
-            img.color = panelColor;
+            Color c = img.color;
+            c.a = 1f;
+            img.color = c;
         }
 
         float t = 0f;
         while (t < duration)
         {
             t += Time.deltaTime;
-            float progress = Mathf.Clamp01(t / duration);
+            float progress = t / duration;
 
             if (sr != null)
-                sr.color = new Color(noteColor.r, noteColor.g, noteColor.b, progress);
+            {
+                Color c = sr.color;
+                c.a = progress;
+                sr.color = c;
+            }
 
             if (img != null)
-                img.color = new Color(panelColor.r, panelColor.g, panelColor.b, 1f - progress);
+            {
+                Color c = img.color;
+                c.a = 1f - progress;
+                img.color = c;
+            }
 
             yield return null;
         }
 
         if (sr != null)
-            sr.color = new Color(noteColor.r, noteColor.g, noteColor.b, 1f);
+        {
+            Color c = sr.color;
+            c.a = 1f;
+            sr.color = c;
+        }
 
         if (img != null)
-            img.color = new Color(panelColor.r, panelColor.g, panelColor.b, 0f);
+        {
+            Color c = img.color;
+            c.a = 0f;
+            img.color = c;
+        }
 
         Destroy(panelObj);
         panel = null;
@@ -228,7 +270,7 @@ public class Readdrop : MonoBehaviour
         PointerEventData eventData = new PointerEventData(eventSystem);
         eventData.position = Input.mousePosition;
 
-        var results = new System.Collections.Generic.List<RaycastResult>();
+        var results = new List<RaycastResult>();
         raycaster.Raycast(eventData, results);
 
         foreach (var r in results)

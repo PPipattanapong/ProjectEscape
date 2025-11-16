@@ -3,6 +3,7 @@ using TMPro;
 using System.Collections;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 public class SafePin : MonoBehaviour
 {
@@ -12,7 +13,6 @@ public class SafePin : MonoBehaviour
     public GameObject keyReward;
 
     [Header("Requirement")]
-    [Tooltip("ชื่อไอเท็มที่ต้องมีใน Inventory ก่อนถึงจะใช้เซฟได้")]
     public string requiredItemName;
 
     [Header("UI Panel")]
@@ -24,14 +24,16 @@ public class SafePin : MonoBehaviour
     public float zoomDuration = 1f;
 
     [Header("Penalty Settings")]
-    [Tooltip("จำนวนวินาทีที่จะลดเมื่อกรอกรหัสผิด")]
     public float wrongCodePenalty = 10f;
 
     [Header("Flash Effect (Wrong Code)")]
-    [Tooltip("Panel สีแดงที่จะใช้ flash ตอนกรอกรหัสผิด")]
     public GameObject damageFlashPanel;
     public float flashDuration = 0.3f;
     public float flashMaxAlpha = 0.6f;
+
+    // ⭐ ใหม่: เพิ่มลิสต์สำหรับลบ Tooltip หลังจากเซฟเปิด
+    [Header("Tooltip To Delete When Solved")]
+    public List<GameObject> tooltipObjects = new List<GameObject>();
 
     private string input = "";
     private bool solved = false;
@@ -139,7 +141,8 @@ public class SafePin : MonoBehaviour
         mainCamera.orthographicSize = originalCamSize;
 
         yield return new WaitForSeconds(0.15f);
-        if (camController != null) camController.enabled = true;
+        if (camController != null)
+            camController.enabled = true;
 
         isZooming = false;
     }
@@ -180,6 +183,16 @@ public class SafePin : MonoBehaviour
             solved = true;
             Debug.Log("✅ Safe opened!");
 
+            // ⭐ ลบ Tooltip ของ item ที่กำหนดไว้
+            foreach (GameObject obj in tooltipObjects)
+            {
+                if (obj == null) continue;
+
+                Tooltip t = obj.GetComponent<Tooltip>();
+                if (t != null)
+                    Destroy(t);
+            }
+
             if (safeRenderer != null)
                 safeRenderer.sortingOrder = 0;
 
@@ -192,8 +205,6 @@ public class SafePin : MonoBehaviour
             if (keyReward != null)
                 StartCoroutine(FadeInReward(keyReward, 2f));
 
-            // ❌ ตัด Flash ตอนรหัสถูกออกไปแล้ว
-
             StartCoroutine(HandleAfterSolved());
             input = "";
         }
@@ -202,16 +213,12 @@ public class SafePin : MonoBehaviour
             Debug.Log("❌ Wrong code!");
             StartCoroutine(ShowTemporaryMessage("Wrong code!", 1.5f, Color.red));
 
-            // 🔻 Flash ตอนรหัสผิด
             if (damageFlashPanel != null)
                 StartCoroutine(FlashDamagePanel());
 
             WallCountdownWithImages timer = FindObjectOfType<WallCountdownWithImages>();
             if (timer != null)
-            {
                 timer.ReduceTime(wrongCodePenalty);
-                Debug.Log($"Reduced {wrongCodePenalty} seconds.");
-            }
 
             input = "";
         }
@@ -328,23 +335,23 @@ public class SafePin : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    public void ClosePanel(bool instantPanelHide = false)
+    public void ClosePanel(bool instantHide)
     {
         if (safePanel != null && !isZooming)
         {
-            if (instantPanelHide)
+            if (instantHide)
                 safePanel.SetActive(false);
+
             StartCoroutine(ZoomOutAndClose());
         }
     }
 
-    // ✅ ใช้สำหรับกดปุ่ม TextMeshPro (หรือปุ่มอื่น) เพื่อปิด panel
     public void OnButtonClickOutside()
     {
         if (safePanel != null && safePanel.activeSelf && !isZooming)
         {
-            ClosePanel(true);
+            safePanel.SetActive(false);
+            StartCoroutine(ZoomOutAndClose());
         }
     }
-
 }

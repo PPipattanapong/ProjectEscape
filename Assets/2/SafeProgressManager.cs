@@ -1,16 +1,17 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class SafeProgressLight : MonoBehaviour
 {
     [Header("Light (Single SpriteRenderer)")]
-    public SpriteRenderer lightRenderer;  // ไฟดวงเดียว
+    public SpriteRenderer lightRenderer;
     public Color redColor = Color.red;
     public Color greenColor = Color.green;
 
     [Header("Objects to Fade")]
-    public SpriteRenderer safeRenderer;   // ตัวตู้เซฟ
-    public SpriteRenderer newObject;      // ของใหม่ที่จะโผล่หลังปลดล็อก
+    public SpriteRenderer safeRenderer;
+    public SpriteRenderer newObject;
 
     [Header("Extra Object To Destroy")]
     [Tooltip("วัตถุที่จะค่อยๆจางหายหลังเซฟถูกปลดล็อก")]
@@ -18,6 +19,10 @@ public class SafeProgressLight : MonoBehaviour
 
     [Header("Fade Settings")]
     public float fadeDuration = 1.5f;
+
+    [Header("Tooltip To Remove On Unlock")]
+    [Tooltip("รายการวัตถุที่ต้องลบ Tooltip ทิ้งเมื่อปลดล็อกสำเร็จ")]
+    public List<GameObject> objectsToRemoveTooltip = new List<GameObject>();
 
     private bool unlocked = false;
     private bool puzzleCompleted = false;
@@ -27,11 +32,9 @@ public class SafeProgressLight : MonoBehaviour
         unlocked = false;
         puzzleCompleted = false;
 
-        // ตั้งไฟเริ่มต้นเป็นแดง
         if (lightRenderer != null)
             lightRenderer.color = redColor;
 
-        // เซ็ตสถานะเริ่มต้นของวัตถุ
         if (newObject != null)
         {
             Color c = newObject.color;
@@ -48,24 +51,19 @@ public class SafeProgressLight : MonoBehaviour
         }
 
         if (destroyWhenUnlocked != null)
-        {
-            // ซ่อน object นี้ไว้ก่อน (ถ้ายังไม่ได้ปลด)
             destroyWhenUnlocked.SetActive(true);
-        }
     }
 
-    // ✅ เรียกจาก puzzle อื่นเมื่อผ่านแล้ว
+    // เรียกจาก puzzle อื่นเมื่อผ่านแล้ว
     public void MarkPuzzleComplete()
     {
         if (unlocked || puzzleCompleted) return;
 
         puzzleCompleted = true;
 
-        // เปลี่ยนไฟเป็นเขียว
         if (lightRenderer != null)
             lightRenderer.color = greenColor;
 
-        // ปลดล็อกเซฟ
         StartCoroutine(UnlockSafe());
     }
 
@@ -78,16 +76,30 @@ public class SafeProgressLight : MonoBehaviour
         if (safeRenderer != null)
             yield return StartCoroutine(FadeSprite(safeRenderer, 1f, 0f));
 
-        // Fade in new object
+        // Fade in the new object
         if (newObject != null)
         {
             newObject.gameObject.SetActive(true);
             yield return StartCoroutine(FadeSprite(newObject, 0f, 1f));
         }
 
-        // ✅ ลบ object ที่ตั้งไว้ใน Inspector แบบ fade
+        // ลบ object fade-out
         if (destroyWhenUnlocked != null)
             StartCoroutine(FadeAndDestroy(destroyWhenUnlocked, fadeDuration));
+
+        // ⭐ ลบ Tooltip ทั้งหมดที่กำหนด
+        foreach (var obj in objectsToRemoveTooltip)
+        {
+            if (obj != null)
+            {
+                Tooltip t = obj.GetComponent<Tooltip>();
+                if (t != null)
+                {
+                    Destroy(t);
+                    Debug.Log("[SafeProgressLight] Removed Tooltip from: " + obj.name);
+                }
+            }
+        }
     }
 
     IEnumerator FadeSprite(SpriteRenderer sr, float from, float to)
@@ -123,17 +135,15 @@ public class SafeProgressLight : MonoBehaviour
         }
 
         float t = 0f;
-        Color originalColor = sr ? sr.color : img.color;
+        Color oc = sr ? sr.color : img.color;
 
         while (t < duration)
         {
             t += Time.deltaTime;
-            float alpha = Mathf.Lerp(originalColor.a, 0f, t / duration);
+            float alpha = Mathf.Lerp(oc.a, 0f, t / duration);
 
-            if (sr)
-                sr.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
-            if (img)
-                img.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
+            if (sr) sr.color = new Color(oc.r, oc.g, oc.b, alpha);
+            if (img) img.color = new Color(oc.r, oc.g, oc.b, alpha);
 
             yield return null;
         }

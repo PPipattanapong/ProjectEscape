@@ -7,9 +7,9 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
 {
     [Header("Puzzle UI")]
     public GameObject rotatePanel;
-    public GameObject other;         // ตัวที่จะหมุนใน UI
-    public GameObject og;            // ตำแหน่งเป้าหมาย
-    public GameObject unlockObject;  // Object ใหม่ที่จะ active เมื่อผ่าน
+    public GameObject other;
+    public GameObject og;
+    public GameObject unlockObject;
 
     [Header("Accepted Items")]
     public string[] acceptedItems;
@@ -21,6 +21,10 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
 
     [Header("Extra Object To Destroy")]
     public GameObject destroyWhenSolved;
+
+    // ⭐ ใหม่: ใส่ตัวที่จะลบ Tooltip เมื่อตัวต่อผ่าน
+    [Header("Tooltip To Delete When Solved")]
+    public List<GameObject> tooltipObjects = new List<GameObject>();
 
     private Quaternion targetRotation;
     private bool isPanelActive;
@@ -121,10 +125,17 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
             Debug.Log("[RotatePuzzle] Puzzle Solved!");
             ClosePanel();
 
-            // ✅ ลบไอเท็มจาก inventory ทันทีเมื่อผ่าน
-            RemoveUsedItemInstantly();
+            // 🔥 ลบ Tooltip ของ object ที่กำหนด
+            foreach (GameObject obj in tooltipObjects)
+            {
+                if (obj == null) continue;
 
-            // ✅ เริ่ม fade สีและปลดล็อกวัตถุ
+                Tooltip t = obj.GetComponent<Tooltip>();
+                if (t != null)
+                    Destroy(t);
+            }
+
+            RemoveUsedItemInstantly();
             StartCoroutine(FadeSolvedEffects());
         }
     }
@@ -191,10 +202,8 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
             if (sr != null) sr.color = solvedColor;
         }
 
-        // ✅ ซิงค์การหมุน
         transform.rotation = other.transform.rotation;
 
-        // ✅ ทำลาย object ที่ตั้งไว้
         if (destroyWhenSolved != null)
             StartCoroutine(FadeAndDestroy(destroyWhenSolved, fadeDuration));
     }
@@ -215,7 +224,7 @@ public class RotatePuzzle : MonoBehaviour, IItemReceiver
 
         while (t < duration)
         {
-            t += Time.deltaTime;
+            t += Time.deltaTime;   // ← แก้ตรงนี้เรียบร้อย
             float alpha = Mathf.Lerp(originalColor.a, 0f, t / duration);
 
             if (sr)

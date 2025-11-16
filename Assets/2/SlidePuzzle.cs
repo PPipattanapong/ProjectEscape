@@ -28,8 +28,14 @@ public class SlidePuzzle4x4 : MonoBehaviour
     [Tooltip("ข้อความ SUCCESS ที่จะโชว์ตอนผ่านพัซเซิล")]
     public TextMeshProUGUI successText;
 
+    [Header("Success Color")]
+    public Color successColor = Color.green;
+
     [Header("Fade Settings")]
     public float fadeDuration = 1.5f;
+
+    [Header("Tooltip To Remove On Success")]
+    public List<GameObject> objectsToRemoveTooltip = new List<GameObject>();
 
     private Vector2[] positions = new Vector2[16];
     private int emptyIndex = 15;
@@ -39,7 +45,6 @@ public class SlidePuzzle4x4 : MonoBehaviour
 
     void Start()
     {
-        // ✅ ปิด panel และซ่อนข้อความ SUCCESS ตอนเริ่ม
         if (puzzlePanel != null)
         {
             puzzlePanel.SetActive(false);
@@ -47,9 +52,7 @@ public class SlidePuzzle4x4 : MonoBehaviour
         }
 
         if (successText != null)
-        {
             successText.gameObject.SetActive(false);
-        }
 
         if (puzzleObject != null && puzzleObject.GetComponent<Collider2D>() == null)
             puzzleObject.AddComponent<BoxCollider2D>();
@@ -57,7 +60,6 @@ public class SlidePuzzle4x4 : MonoBehaviour
         SetupGrid();
         SetupButtons();
 
-        // ✅ ตั้งค่าปุ่มให้เป็น RESET
         if (shuffleButton != null)
         {
             shuffleButton.onClick.AddListener(ResetTilesToStart);
@@ -65,7 +67,6 @@ public class SlidePuzzle4x4 : MonoBehaviour
             if (btnText != null) btnText.text = "RESET";
         }
 
-        // ✅ เรียงเกือบครบตั้งแต่เริ่มเกม
         ResetTilesToStart();
 
         if (cheatButton != null)
@@ -121,7 +122,6 @@ public class SlidePuzzle4x4 : MonoBehaviour
 
     void Update()
     {
-        // ✅ เปิด panel เมื่อคลิกที่วัตถุ
         if (Input.GetMouseButtonDown(0) && !isOpen && !puzzleSolved)
         {
             Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -134,7 +134,6 @@ public class SlidePuzzle4x4 : MonoBehaviour
             }
         }
 
-        // ✅ ปิด panel เมื่อคลิกนอก panel
         if (isOpen && Input.GetMouseButtonDown(0))
         {
             if (!IsPointerOverPanel())
@@ -153,7 +152,7 @@ public class SlidePuzzle4x4 : MonoBehaviour
 
     void MoveTile(int index)
     {
-        if (puzzleSolved) return; // หลังผ่านแล้วห้ามกดอีก
+        if (puzzleSolved) return;
 
         RectTransform tileRect = tiles[index].GetComponent<RectTransform>();
         int tileIndex = GetNearestGridIndex(tileRect.anchoredPosition);
@@ -184,22 +183,34 @@ public class SlidePuzzle4x4 : MonoBehaviour
         puzzleSolved = true;
         Debug.Log("[SlidePuzzle4x4] Puzzle Solved!");
 
-        // ✅ เรียกใช้ WireCutPuzzle.ApplySqColor()
         if (wireCutPuzzle != null)
         {
             wireCutPuzzle.ApplySqColor();
             Debug.Log("[SlidePuzzle4x4] Called wireCutPuzzle.ApplySqColor()");
         }
 
-        // ✅ ทำ fade และลบ object ที่ตั้งไว้
         if (destroyWhenSolved != null)
             StartCoroutine(FadeAndDestroy(destroyWhenSolved, fadeDuration));
 
-        // ✅ แสดงข้อความ SUCCESS ทันที
         if (successText != null)
         {
             successText.text = "SUCCESS";
+            successText.color = successColor;
             successText.gameObject.SetActive(true);
+        }
+
+        // ⭐ ลบ tooltip ของ object ที่กำหนดไว้
+        foreach (var obj in objectsToRemoveTooltip)
+        {
+            if (obj != null)
+            {
+                Tooltip t = obj.GetComponent<Tooltip>();
+                if (t != null)
+                {
+                    Destroy(t);
+                    Debug.Log("[SlidePuzzle4x4] Removed Tooltip on: " + obj.name);
+                }
+            }
         }
     }
 
@@ -256,35 +267,26 @@ public class SlidePuzzle4x4 : MonoBehaviour
         return Mathf.Abs(ax - bx) + Mathf.Abs(ay - by) == 1;
     }
 
-    // ✅ เรียงเกือบครบตั้งแต่เริ่มเกม + reset เมื่อกดปุ่ม
     void ResetTilesToStart()
     {
-        Debug.Log("🔁 Reset puzzle to custom starting layout (ตามภาพ).");
+        Debug.Log("🔁 Reset puzzle to custom starting layout.");
 
-        // วางตำแหน่ง tile 1–15 ให้ตรงกับรูปที่ให้มา
-        // ดัชนีตำแหน่งใน positions[] ไล่จากบนซ้าย (0) ถึงล่างขวา (15)
-        // แถวละ 4 ตำแหน่ง => 0-3, 4-7, 8-11, 12-15
-
-        // แถว 1: 1 2 3 4
         tiles[0].GetComponent<RectTransform>().anchoredPosition = positions[0];
         tiles[1].GetComponent<RectTransform>().anchoredPosition = positions[1];
         tiles[2].GetComponent<RectTransform>().anchoredPosition = positions[2];
         tiles[3].GetComponent<RectTransform>().anchoredPosition = positions[3];
 
-        // แถว 2: 5 6 7 8
         tiles[4].GetComponent<RectTransform>().anchoredPosition = positions[4];
         tiles[5].GetComponent<RectTransform>().anchoredPosition = positions[5];
         tiles[6].GetComponent<RectTransform>().anchoredPosition = positions[6];
         tiles[7].GetComponent<RectTransform>().anchoredPosition = positions[7];
 
-        // แถว 3: 11 10 [empty] 9
         tiles[10].GetComponent<RectTransform>().anchoredPosition = positions[8];
         tiles[9].GetComponent<RectTransform>().anchoredPosition = positions[9];
         tiles[8].GetComponent<RectTransform>().anchoredPosition = positions[11];
         emptyIndex = 10;
         emptySlot.anchoredPosition = positions[10];
 
-        // แถว 4: 13 12 15 14
         tiles[12].GetComponent<RectTransform>().anchoredPosition = positions[12];
         tiles[11].GetComponent<RectTransform>().anchoredPosition = positions[13];
         tiles[14].GetComponent<RectTransform>().anchoredPosition = positions[14];
@@ -292,11 +294,9 @@ public class SlidePuzzle4x4 : MonoBehaviour
 
         puzzleSolved = false;
 
-        // ปิด success text ถ้ามี
         if (successText != null)
             successText.gameObject.SetActive(false);
     }
-
 
     bool CheckWin()
     {

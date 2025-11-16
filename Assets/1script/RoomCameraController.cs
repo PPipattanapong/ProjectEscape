@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using TMPro;
+using UnityEngine.UI;
 
 public class RoomCameraController : MonoBehaviour
 {
@@ -10,7 +11,11 @@ public class RoomCameraController : MonoBehaviour
     public float speed = 5f;
 
     [Header("UI")]
-    public TextMeshProUGUI roomText; // 👉 UI TMP (ใน Canvas)
+    public TextMeshProUGUI roomText;
+
+    [Header("Buttons")]
+    public GameObject leftButton;   // ปุ่มเดินซ้าย
+    public GameObject rightButton;  // ปุ่มเดินขวา
 
     private Transform target;
 
@@ -18,6 +23,7 @@ public class RoomCameraController : MonoBehaviour
     {
         target = middlePos;
         UpdateRoomText();
+        UpdateButtons();
     }
 
     void Update()
@@ -32,6 +38,7 @@ public class RoomCameraController : MonoBehaviour
         else if (target == rightPos) target = middlePos;
 
         UpdateRoomText();
+        UpdateButtons();
     }
 
     public void GoRight()
@@ -40,14 +47,39 @@ public class RoomCameraController : MonoBehaviour
         else if (target == leftPos) target = middlePos;
 
         UpdateRoomText();
+        UpdateButtons();
     }
 
     private void UpdateRoomText()
     {
-        if (roomText == null) return;
+        if (!roomText) return;
 
         if (target == leftPos) roomText.text = "LEFT";
         else if (target == middlePos) roomText.text = "MIDDLE";
         else if (target == rightPos) roomText.text = "RIGHT";
+    }
+
+    private void UpdateButtons()
+    {
+        if (!leftButton || !rightButton) return;
+
+        // อยู่ซ้ายสุด → ซ่อนปุ่มซ้าย
+        if (target == leftPos)
+        {
+            leftButton.SetActive(false);
+            rightButton.SetActive(true);
+        }
+        // อยู่ขวาสุด → ซ่อนปุ่มขวา
+        else if (target == rightPos)
+        {
+            leftButton.SetActive(true);
+            rightButton.SetActive(false);
+        }
+        // อยู่กลาง → ปุ่มออกครบ
+        else
+        {
+            leftButton.SetActive(true);
+            rightButton.SetActive(true);
+        }
     }
 }

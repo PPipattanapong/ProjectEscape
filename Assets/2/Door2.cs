@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System.Collections.Generic;
 
 public class DoorController_Simple : MonoBehaviour, IItemReceiver
 {
@@ -6,6 +7,10 @@ public class DoorController_Simple : MonoBehaviour, IItemReceiver
     public string requiredItem = "Key";      // 🗝 Item name needed to unlock the door
     public GameObject unlockTarget;          // Object to activate when unlocked
     public GameObject objectToDisable;       // Object to deactivate when unlocked
+
+    [Header("Tooltip To Remove On Unlock")]
+    [Tooltip("ใส่วัตถุที่มี Tooltip ที่ต้องลบทิ้งเมื่อประตูปลดล็อก")]
+    public List<GameObject> objectsToRemoveTooltip = new List<GameObject>();
 
     private bool unlocked = false;
     private SpriteRenderer spriteRenderer;
@@ -47,6 +52,19 @@ public class DoorController_Simple : MonoBehaviour, IItemReceiver
             // Activate target object immediately
             if (unlockTarget != null)
                 unlockTarget.SetActive(true);
+
+            // ⭐ ลบ Tooltip ทั้งหมดที่กำหนด
+            foreach (var obj in objectsToRemoveTooltip)
+            {
+                if (obj == null) continue;
+
+                Tooltip t = obj.GetComponent<Tooltip>();
+                if (t != null)
+                {
+                    Destroy(t);
+                    Debug.Log("[DoorController_Simple] Removed Tooltip from: " + obj.name);
+                }
+            }
         }
         else
         {

@@ -23,19 +23,24 @@ public class ColorConnectPuzzle : MonoBehaviour
     public GameObject puzzleObject;
 
     [Header("Wire Reference")]
-    public WireCutPuzzle wireCutPuzzle;    // เรียกใช้ ApplyPodiumColor ตอนสำเร็จ
+    public WireCutPuzzle wireCutPuzzle;
 
     [Header("Extra Object To Destroy")]
     public GameObject destroyWhenSolved;
 
     [Header("Success Display")]
-    [Tooltip("ข้อความ SUCCESS ที่จะแสดงตอนผ่าน")]
     public TextMeshProUGUI successText;
-    [Tooltip("ภาพที่จะขึ้นตอนผ่าน (เช่น icon หรือ symbol)")]
     public Image successImage;
+
+    [Header("Success Color")]
+    public Color successColor = Color.green;
 
     [Header("Close Settings")]
     public float fadeDuration = 0.25f;
+
+    [Header("Tooltip To Remove On Success")]
+    public List<GameObject> objectsToRemoveTooltip = new List<GameObject>();
+
 
     private Cell[,] cells;
     private int[,] occupied;
@@ -60,7 +65,6 @@ public class ColorConnectPuzzle : MonoBehaviour
             panelRect = puzzlePanel.GetComponent<RectTransform>();
         }
 
-        // ✅ ซ่อน SUCCESS text และ image ตอนเริ่ม
         if (successText != null)
             successText.gameObject.SetActive(false);
         if (successImage != null)
@@ -82,7 +86,6 @@ public class ColorConnectPuzzle : MonoBehaviour
 
     void Update()
     {
-        // ✅ เปิด panel เมื่อคลิกวัตถุ
         if (Input.GetMouseButtonDown(0) && !isOpen && !puzzleSolved)
         {
             Vector2 wp = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -95,7 +98,6 @@ public class ColorConnectPuzzle : MonoBehaviour
             }
         }
 
-        // ✅ ปิด panel เมื่อคลิคนอก panel
         if (isOpen && Input.GetMouseButtonDown(0))
         {
             if (!IsPointerOverPanel())
@@ -131,13 +133,12 @@ public class ColorConnectPuzzle : MonoBehaviour
                     occupied[x, y] = cells[x, y].colorIndex;
     }
 
-    // จุด start-end แบบ Wuthering Waves
     void PlaceFixedColorPoints_Wuwa()
     {
-        SetEndpoint(0, 3, 1); SetEndpoint(2, 4, 1); // Blue
-        SetEndpoint(3, 4, 0); SetEndpoint(1, 1, 0); // Red
-        SetEndpoint(0, 1, 3); SetEndpoint(2, 2, 3); // Green
-        SetEndpoint(3, 1, 2); SetEndpoint(4, 2, 2); // Yellow
+        SetEndpoint(0, 3, 1); SetEndpoint(2, 4, 1);
+        SetEndpoint(3, 4, 0); SetEndpoint(1, 1, 0);
+        SetEndpoint(0, 1, 3); SetEndpoint(2, 2, 3);
+        SetEndpoint(3, 1, 2); SetEndpoint(4, 2, 2);
     }
 
     void SetEndpoint(int x, int y, int colorIdx)
@@ -150,7 +151,7 @@ public class ColorConnectPuzzle : MonoBehaviour
     // ==== Drag ====
     public void OnCellDown(Cell cell)
     {
-        if (!isOpen || puzzleSolved) return; // ✅ หลังผ่านแล้วห้ามกดอีก
+        if (!isOpen || puzzleSolved) return;
         if (!cell.isEndpoint) return;
         if (lockedPaths.ContainsKey(cell.colorIndex)) return;
 
@@ -189,12 +190,14 @@ public class ColorConnectPuzzle : MonoBehaviour
         }
 
         if (cell.isEndpoint) return;
+
         AddStep(cell);
     }
 
     public void OnCellUp(Cell cell)
     {
         if (!isDragging) return;
+
         if (!(cell.isEndpoint && cell.colorIndex == dragColorIndex && cell != currentPath[0]))
         {
             AbortCurrentDrag();
@@ -245,6 +248,7 @@ public class ColorConnectPuzzle : MonoBehaviour
         currentLine = null;
 
         solvedPairs++;
+
         if (solvedPairs >= totalPairs)
         {
             puzzleSolved = true;
@@ -256,18 +260,29 @@ public class ColorConnectPuzzle : MonoBehaviour
             if (destroyWhenSolved != null)
                 StartCoroutine(FadeAndDestroy(destroyWhenSolved, fadeDuration));
 
-            // ✅ แสดงข้อความและภาพ SUCCESS ทันที
             if (successText != null)
             {
                 successText.text = "SUCCESS";
+                successText.color = successColor;
                 successText.gameObject.SetActive(true);
             }
-            if (successImage != null)
-            {
-                successImage.gameObject.SetActive(true);
-            }
 
-            // ❌ ไม่ปิด panel เอง
+            if (successImage != null)
+                successImage.gameObject.SetActive(true);
+
+            // ⭐ ลบ Tooltip ของ Object ที่กำหนดไว้
+            foreach (var obj in objectsToRemoveTooltip)
+            {
+                if (obj != null)
+                {
+                    Tooltip t = obj.GetComponent<Tooltip>();
+                    if (t != null)
+                    {
+                        Destroy(t);
+                        Debug.Log("[ColorConnectPuzzle] Removed Tooltip on: " + obj.name);
+                    }
+                }
+            }
         }
     }
 
@@ -352,7 +367,6 @@ public class ColorConnectPuzzle : MonoBehaviour
             }
         }
 
-        // ✅ ซ่อนข้อความและภาพ SUCCESS เมื่อรีเซ็ต
         if (successText != null)
             successText.gameObject.SetActive(false);
         if (successImage != null)

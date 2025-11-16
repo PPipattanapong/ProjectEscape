@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.UI;
-using TMPro; // ✅ เพิ่ม
+using TMPro;
 
 public class WirePuzzle : MonoBehaviour, IItemReceiver
 {
@@ -26,19 +26,22 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
     public float outOfPathPenalty = 10f;
 
     [Header("Flash Effect (Penalty)")]
-    [Tooltip("Panel สีแดงที่จะใช้ flash ตอนโดนลงโทษ")]
     public GameObject damageFlashPanel;
     public float flashDuration = 0.3f;
     public float flashMaxAlpha = 0.6f;
 
-    // ✅ เพิ่มช่อง TextMeshPro (3D)
     [Header("TMP (3D)")]
-    public TextMeshPro tmp3D;                    // ลาก TextMeshPro (ไม่ใช่ UGUI) มาวาง
+    public TextMeshPro tmp3D;
     [TextArea(1, 3)] public string activeMessage = "Drag along the red path.";
     [TextArea(1, 3)] public string penaltyMessage = "-10s! Stay on the path.";
     [TextArea(1, 3)] public string successMessage = "Unlocked.";
-    public float textFadeDuration = 0.35f;       // เวลา fade ข้อความเข้า/ออก
-    public float messageHoldTime = 0.8f;         // เวลาค้างข้อความสั้นๆ
+    public float textFadeDuration = 0.35f;
+    public float messageHoldTime = 0.8f;
+
+    // ⭐ ใหม่: ลิสต์สำหรับลบ Tooltip เมื่อพัซเซิลผ่าน
+    [Header("Tooltip To Delete When Solved")]
+    public List<GameObject> tooltipObjects = new List<GameObject>();
+
 
     private bool isDragging = false;
     private bool solved = false;
@@ -68,7 +71,6 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
                 img.color = new Color(img.color.r, img.color.g, img.color.b, 0f);
         }
 
-        // ✅ เตรียม TMP
         if (tmp3D != null)
         {
             tmp3D.gameObject.SetActive(false);
@@ -90,7 +92,6 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
             endObject.SetActive(true);
             startObject.transform.position = startOriginalPos;
 
-            // ✅ โชว์ข้อความพร้อมเปิดพาธ
             if (tmp3D != null)
             {
                 tmp3D.text = activeMessage;
@@ -162,7 +163,6 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
             if (timer != null)
                 timer.ReduceTime(outOfPathPenalty);
 
-            // ✅ แสดงข้อความโดนลงโทษ (เด้งสั้นๆ)
             if (tmp3D != null && activated && !solved)
                 StartCoroutine(ShowTMPBrief(tmp3D, penaltyMessage, messageHoldTime, textFadeDuration));
 
@@ -175,6 +175,65 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
             Debug.Log("[WirePuzzle] 🎉 Reached END");
             PuzzleSolved();
         }
+    }
+
+    void ResetPuzzle()
+    {
+        isDragging = false;
+        activated = false;
+
+        fieldObject.SetActive(false);
+        startObject.SetActive(false);
+        foreach (var pathObj in pathObjects) pathObj.SetActive(false);
+        endObject.SetActive(false);
+        startObject.transform.position = startOriginalPos;
+
+        if (tmp3D != null)
+        {
+            tmp3D.text = "";
+            tmp3D.gameObject.SetActive(false);
+            SetTMPAlpha(tmp3D, 0f);
+        }
+
+        Debug.Log("[WirePuzzle] Puzzle Reset complete");
+    }
+
+    void PuzzleSolved()
+    {
+        isDragging = false;
+        solved = true;
+        doorLight.SetGreen();
+
+        fieldObject.SetActive(false);
+        startObject.SetActive(false);
+        foreach (var pathObj in pathObjects)
+            pathObj.SetActive(false);
+        endObject.SetActive(false);
+
+        // ⭐ ลบ Tooltip ทั้งหมดที่กำหนด
+        foreach (var obj in tooltipObjects)
+        {
+            if (obj == null) continue;
+
+            Tooltip t = obj.GetComponent<Tooltip>();
+            if (t != null)
+                Destroy(t);    // 🔥 ลบ Tooltip component
+        }
+
+        foreach (var slot in FindObjectsOfType<InventorySlot>())
+        {
+            if (slot.currentItem != null && slot.currentItem.itemName == requiredItem)
+            {
+                slot.ClearSlot();
+                Debug.Log("[WirePuzzle] Removed required item");
+                break;
+            }
+        }
+
+        noteRight.SetActive(true);
+
+        if (tmp3D != null)
+            StartCoroutine(ShowTMPBrief(tmp3D, successMessage, messageHoldTime, textFadeDuration, deactivateAtEnd: true));
     }
 
     private IEnumerator FlashDamagePanel()
@@ -207,57 +266,6 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         img.color = new Color(baseColor.r, baseColor.g, baseColor.b, 0f);
     }
 
-    void ResetPuzzle()
-    {
-        isDragging = false;
-        activated = false;
-
-        fieldObject.SetActive(false);
-        startObject.SetActive(false);
-        foreach (var pathObj in pathObjects) pathObj.SetActive(false);
-        endObject.SetActive(false);
-        startObject.transform.position = startOriginalPos;
-
-        // ✅ ปิด TMP พร้อมกัน
-        if (tmp3D != null)
-        {
-            tmp3D.text = "";
-            tmp3D.gameObject.SetActive(false);
-            SetTMPAlpha(tmp3D, 0f);
-        }
-
-        Debug.Log("[WirePuzzle] Puzzle Reset complete");
-    }
-
-    void PuzzleSolved()
-    {
-        isDragging = false;
-        solved = true;
-        doorLight.SetGreen();
-
-        fieldObject.SetActive(false);
-        startObject.SetActive(false);
-        foreach (var pathObj in pathObjects)
-            pathObj.SetActive(false);
-        endObject.SetActive(false);
-
-        foreach (var slot in FindObjectsOfType<InventorySlot>())
-        {
-            if (slot.currentItem != null && slot.currentItem.itemName == requiredItem)
-            {
-                slot.ClearSlot();
-                Debug.Log("[WirePuzzle] Removed required item");
-                break;
-            }
-        }
-
-        noteRight.SetActive(true);
-
-        // ✅ โชว์ข้อความสำเร็จ แล้วค่อยหายไป
-        if (tmp3D != null)
-            StartCoroutine(ShowTMPBrief(tmp3D, successMessage, messageHoldTime, textFadeDuration, deactivateAtEnd: true));
-    }
-
     void OnDrawGizmosSelected()
     {
         if (startObject != null)
@@ -267,7 +275,7 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         }
     }
 
-    // ===== ✅ Helpers สำหรับ TMP (3D) =====
+    // ===== TMP Helpers =====
     void SetTMPAlpha(TextMeshPro t, float a)
     {
         if (t == null) return;

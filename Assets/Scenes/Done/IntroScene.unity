@@ -292,15 +292,15 @@ MonoBehaviour:
   dialogueLines:
   - "Narrator: A soft white light touches my eyelids. The faint hum of machinery
     echoes in the distance.\r"
-  - "Narrator: Slowly, I open my eyes\u2026 and see a strange creature standing before
-    me.\r"
+  - "Narrator: Slowly, I open my eyes\u2026 a strange creature looms over me. My
+    mind is blank \u2014 I remember nothing.\r"
   - "???: You're human, aren\u2019t you? \u2026Nice to meet you."
   - "Alien: We are the Aliens. Yeah, just \"Aliens.\"\r"
   - "Alien: You\u2019ve been chosen \u2014 to test the intelligence, wit, and agility
     of humanity.\r"
   - "Alien: Follow me.\r"
-  - "Alien: You must complete all three trials \u2014 each within five minutes. Pass
-    them all, and you\u2019ll earn your freedom.\r"
+  - "Alien: You must complete two simple trials \u2014 five minutes each. Do that,
+    and we will return your memories.\r"
   - "Alien: First, you'll enter a Time Compression Room.\r"
   - "Alien: Every minute in there\u2026 your body will age by something you won\u2019t
     like.\r"
