@@ -19,9 +19,11 @@ public class DoorController : MonoBehaviour, IItemReceiver
     [Header("Fade Settings")]
     public float fadeDuration = 1.5f;
 
-    // ⭐ ใหม่: ลิสต์ของ Object ที่ต้องลบ Tooltip เมื่อประตูเปิด
     [Header("Tooltip To Delete When Door Opens")]
     public List<GameObject> tooltipObjects = new List<GameObject>();
+
+    [Header("Audio")]
+    public AudioSource doorOpenSound;   // 🔊 เสียงตอนประตูเปิด
 
     private bool keyInserted = false;
     private Collider2D doorCollider;
@@ -60,13 +62,17 @@ public class DoorController : MonoBehaviour, IItemReceiver
         {
             Debug.Log("✅ Door opened!");
 
+            // --- 🔊 เล่นเสียงตอนเปิดประตู ---
+            if (doorOpenSound != null)
+                doorOpenSound.Play();
+
             if (doorCollider != null)
                 doorCollider.enabled = false;
 
             if (unlockTarget != null)
                 unlockTarget.SetActive(true);
 
-            // 🔥 ลบ Tooltip ทุกอันที่กำหนด
+            // ลบ tooltip
             foreach (var obj in tooltipObjects)
             {
                 if (obj == null) continue;

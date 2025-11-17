@@ -6,22 +6,22 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/Done/MainMenu.unity
+    path: Assets/1Sound/Done/R/MainMenu.unity
     guid: 00dd8cccf16848945a4b0741c5864956
   - enabled: 1
-    path: Assets/Scenes/Done/GameOver.unity
+    path: Assets/1Sound/Done/R/GameOver.unity
     guid: 9ec84d7f3ef1bb040a4336829b810b24
   - enabled: 1
-    path: Assets/Scenes/Done/IntroScene.unity
+    path: Assets/1Sound/Done/R/IntroScene.unity
     guid: 40d93f98fed915347941feef28274876
   - enabled: 1
-    path: Assets/Scenes/RealR1.unity
+    path: Assets/1Sound/Done/RealR1.unity
     guid: cb268741653b45a4db6bd021fd073b53
   - enabled: 1
-    path: Assets/Scenes/Done/Cutpass1.unity
+    path: Assets/1Sound/Done/R/Cutpass1.unity
     guid: 204c8958bbd3ba74a86061ce7d1762b7
   - enabled: 1
-    path: Assets/Scenes/RealR2.unity
+    path: Assets/1Sound/Done/RealR2.unity
     guid: 975dd6cba0ac8bb44adfc2bbea716bb8
   - enabled: 1
     path: Assets/Scenes/Room3.unity

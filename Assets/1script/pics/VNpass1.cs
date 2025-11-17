@@ -1,14 +1,15 @@
 ﻿using System.Collections;
-using UnityEngine;
+using System.Collections.Generic;
 using TMPro;
+using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class Vnpass1 : MonoBehaviour
 {
     [Header("UI References")]
-    public TextMeshProUGUI dialogueText;   // ข้อความบทพูด
-    public TextMeshProUGUI speakerText;    // ชื่อผู้พูด
+    public TextMeshProUGUI dialogueText;
+    public TextMeshProUGUI speakerText;
     public Button skipButton;
 
     [Header("Dialogue Settings")]
@@ -16,6 +17,10 @@ public class Vnpass1 : MonoBehaviour
     public string[] dialogueLines;
     public float typeSpeed = 0.03f;
     public string nextSceneName = "GameScene";
+
+    [Header("Voice Settings")]
+    public AudioSource voiceSource;            // ★ เสียงพูด
+    public List<AudioClip> voiceClips;         // ★ เสียงตรงตาม index ของ dialogueLines
 
     [Header("Effect References")]
     public Image Black;
@@ -35,7 +40,7 @@ public class Vnpass1 : MonoBehaviour
         if (skipButton != null)
             skipButton.onClick.AddListener(SkipToGame);
 
-        // ✅ ตั้งค่าเริ่มต้น — Scene1 โผล่ทันที, ไม่ต้องดำ
+        // เริ่มด้วย Scene1 โผล่ทันที
         SetAlpha(Black, 0f);
         SetAlpha(Scene1, 1f);
         SetAlpha(Scene2, 0f);
@@ -47,7 +52,6 @@ public class Vnpass1 : MonoBehaviour
         Scene3.gameObject.SetActive(false);
         Scene4.gameObject.SetActive(false);
 
-        // ✅ เริ่มพิมพ์บทพูดเลย
         StartCoroutine(TypeLine());
     }
 
@@ -59,22 +63,26 @@ public class Vnpass1 : MonoBehaviour
 
     void OnDialogueClick()
     {
+        // ถ้ากำลังพิมพ์ → ข้ามไปให้โชว์เต็ม แต่ห้ามตัดเสียง
         if (isTyping)
         {
             skipTyping = true;
+            return;
         }
-        else
+
+        // จะไปประโยคใหม่ → ต้องตัดเสียงเก่า
+        if (voiceSource != null && voiceSource.isPlaying)
+            voiceSource.Stop();
+
+        currentLineIndex++;
+
+        if (currentLineIndex >= dialogueLines.Length)
         {
-            currentLineIndex++;
-
-            if (currentLineIndex >= dialogueLines.Length)
-            {
-                SceneManager.LoadScene(nextSceneName);
-                return;
-            }
-
-            StartCoroutine(TypeLine());
+            SceneManager.LoadScene(nextSceneName);
+            return;
         }
+
+        StartCoroutine(TypeLine());
     }
 
     IEnumerator TypeLine()
@@ -83,18 +91,20 @@ public class Vnpass1 : MonoBehaviour
         skipTyping = false;
         dialogueText.text = "";
 
-        // 🔹 ตรวจว่าบรรทัดนี้มีการเปลี่ยนภาพไหม
-        bool shouldFade = (currentLineIndex == 1 || currentLineIndex == 4 || currentLineIndex == 6);
-
+        // ทำ fade เปลี่ยนฉากก่อนค่อยเล่นเสียง
         if (currentLineIndex == 1)
             yield return StartCoroutine(FadeImages(Scene1, Scene2));
-
-        if (currentLineIndex == 4)
+        else if (currentLineIndex == 4)
             yield return StartCoroutine(FadeImages(Scene2, Scene3));
-
-        if (currentLineIndex == 6)
+        else if (currentLineIndex == 6)
             yield return StartCoroutine(FadeImages(Scene3, Scene4));
 
+        // ★ เล่นเสียงประโยคนี้หลัง Fade เสร็จ
+        PlayVoiceForLine(currentLineIndex);
+
+        // --------------------------------------
+        // แยก speaker : message
+        // --------------------------------------
         string line = dialogueLines[currentLineIndex];
         string speaker = "";
         string message = line;
@@ -108,12 +118,11 @@ public class Vnpass1 : MonoBehaviour
 
         speakerText.text = speaker;
 
-        // 🔹 fade in ข้อความหลังเปลี่ยนภาพ
-        if (shouldFade)
-            yield return StartCoroutine(FadeInText());
-        else
-            SetTextAlpha(1f);
+        SetTextAlpha(1f);
 
+        // --------------------------------------
+        // Typewriter effect
+        // --------------------------------------
         foreach (char c in message)
         {
             if (skipTyping)
@@ -129,17 +138,29 @@ public class Vnpass1 : MonoBehaviour
         isTyping = false;
     }
 
+    // ★ เล่นเสียงตาม index
+    void PlayVoiceForLine(int index)
+    {
+        if (voiceSource == null) return;
+        if (voiceClips == null) return;
+        if (index >= voiceClips.Count) return;
+        if (voiceClips[index] == null) return;
+
+        voiceSource.Stop();
+        voiceSource.clip = voiceClips[index];
+        voiceSource.Play();
+    }
+
     IEnumerator FadeImages(Image fromImage, Image toImage)
     {
-        // 🔹 ซ่อนข้อความก่อน
         dialogueText.text = "";
         speakerText.text = "";
         SetTextAlpha(0f);
 
-        // ✅ ทำให้จอดำ fade-in ปิดจอ
         Black.gameObject.SetActive(true);
         float timer = 0f;
 
+        // Fade-in ดำ
         while (timer < fadeDuration / 2f)
         {
             timer += Time.deltaTime;
@@ -148,13 +169,14 @@ public class Vnpass1 : MonoBehaviour
             yield return null;
         }
 
-        // ✅ เมื่อดำเต็มแล้ว: ปิดภาพเก่า เปิดภาพใหม่
+        // สลับภาพ
         SetAlpha(fromImage, 0f);
         fromImage.gameObject.SetActive(false);
+
         toImage.gameObject.SetActive(true);
         SetAlpha(toImage, 1f);
 
-        // ✅ แล้วค่อย fade-out จอดำออก
+        // Fade-out ดำ
         timer = 0f;
         while (timer < fadeDuration / 2f)
         {
@@ -166,19 +188,6 @@ public class Vnpass1 : MonoBehaviour
 
         SetAlpha(Black, 0f);
         Black.gameObject.SetActive(false);
-    }
-
-    IEnumerator FadeInText()
-    {
-        float timer = 0f;
-        while (timer < fadeDuration / 2f)
-        {
-            timer += Time.deltaTime;
-            float alpha = Mathf.Lerp(0f, 1f, timer / (fadeDuration / 2f));
-            SetTextAlpha(alpha);
-            yield return null;
-        }
-        SetTextAlpha(1f);
     }
 
     void SetAlpha(Image img, float alpha)

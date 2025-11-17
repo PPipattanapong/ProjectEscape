@@ -32,7 +32,7 @@ public class WallCountdownWithImages : MonoBehaviour
     [Header("Scene Settings")]
     public string nextSceneName;
 
-    // ---- Added Post Processing ----
+    // ---- Post Processing ----
     private Volume volume;
     private ChromaticAberration ca;
     private FilmGrain grain;
@@ -43,7 +43,7 @@ public class WallCountdownWithImages : MonoBehaviour
 
     void Start()
     {
-        // ----- GET PP EFFECTS -----
+        // ----- Load PP effects -----
         volume = FindObjectOfType<Volume>();
         if (volume != null && volume.profile != null)
         {
@@ -51,7 +51,7 @@ public class WallCountdownWithImages : MonoBehaviour
             volume.profile.TryGet(out grain);
         }
 
-        // ปิดทุกภาพยกเว้นอันแรก
+        // ----- Init images -----
         for (int i = 0; i < images.Count; i++)
         {
             images[i].SetActive(i == 0);
@@ -67,30 +67,34 @@ public class WallCountdownWithImages : MonoBehaviour
         currentImageIndex = 0;
         nextChangeTime = countdownTime - changeInterval;
 
-        if (stageText != null) stageText.text = "";
+        // ----- Init Stage Text -----
+        if (stageText != null && stageMessages.Count > 0)
+            stageText.text = stageMessages[0];
     }
 
     void Update()
     {
-        // --- นับเวลาถอยหลัง ---
+        // --- countdown ---
         countdownTime -= Time.deltaTime;
         if (countdownTime < 0) countdownTime = 0;
 
         if (clockText != null)
             clockText.text = $"{Mathf.FloorToInt(countdownTime / 60):00}:{Mathf.FloorToInt(countdownTime % 60):00}";
 
-        // --- เปลี่ยนภาพอัตโนมัติ ---
+        // --- auto image change ---
         if (!isFading && currentImageIndex < images.Count - 1 && countdownTime <= nextChangeTime)
         {
             StartCoroutine(FadeToNextImage());
             currentImageIndex++;
             nextChangeTime = countdownTime - changeInterval;
+
+            UpdateStageText(currentImageIndex);
         }
 
-        // ---- Apply PP Aging Effect ----
+        // --- PP effect ---
         ApplyAgingPostProcessing();
 
-        // --- Raycast ---
+        // --- Raycast debug ---
         if (Input.GetMouseButtonDown(0))
         {
             Vector3 worldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -101,7 +105,7 @@ public class WallCountdownWithImages : MonoBehaviour
                 : "Missed worldPos=" + worldPos);
         }
 
-        // --- Skip Time ---
+        // --- Skip time ---
         if (Input.GetKeyDown(skipKey))
         {
             countdownTime -= skipTime;
@@ -113,7 +117,7 @@ public class WallCountdownWithImages : MonoBehaviour
             Debug.Log($"Skipped {skipTime} sec → {countdownTime} left");
         }
 
-        // --- หมดเวลา ---
+        // --- Time is up ---
         if (countdownTime <= 0 && !string.IsNullOrEmpty(nextSceneName))
             SceneManager.LoadScene(nextSceneName);
     }
@@ -123,13 +127,13 @@ public class WallCountdownWithImages : MonoBehaviour
         if (ca == null || grain == null) return;
 
         float elapsed = 300f - countdownTime;
-        float percent = elapsed / 300f; // 0 → 1
+        float percent = elapsed / 300f;
 
         ca.intensity.value = Mathf.Lerp(0f, 0.5f, percent);
         grain.intensity.value = Mathf.Lerp(0f, 0.7f, percent);
     }
 
-    // --- Fade system ---
+    // --- main fade ---
     IEnumerator FadeToNextImage()
     {
         isFading = true;
@@ -158,10 +162,10 @@ public class WallCountdownWithImages : MonoBehaviour
         }
 
         currentGO.SetActive(false);
-
         isFading = false;
     }
 
+    // --- update time when reduced externally ---
     public void ReduceTime(float amount)
     {
         countdownTime -= amount;
@@ -171,17 +175,16 @@ public class WallCountdownWithImages : MonoBehaviour
         {
             int m = Mathf.FloorToInt(countdownTime / 60);
             int s = Mathf.FloorToInt(countdownTime % 60);
-            clockText.text = string.Format("{0:00}:{1:00}", m, s);
+            clockText.text = $"{m:00}:{s:00}";
         }
 
-        // อัปเดตเอฟเฟกต์แก่ (สีเพี้ยน/เกรน)
         ApplyAgingPostProcessing();
+        ForceUpdateBackgroundImage();
 
         Debug.Log($"Time reduced by {amount} sec → {countdownTime}");
     }
 
-
-    // --- Jump stage ---
+    // --- forced stage jump ---
     private void ForceUpdateBackgroundImage()
     {
         float elapsed = 300f - countdownTime;
@@ -202,5 +205,13 @@ public class WallCountdownWithImages : MonoBehaviour
         }
 
         currentImageIndex = targetIndex;
+        UpdateStageText(targetIndex);
+    }
+
+    // --- stage text update ---
+    private void UpdateStageText(int index)
+    {
+        if (stageText != null && index < stageMessages.Count)
+            stageText.text = stageMessages[index];
     }
 }

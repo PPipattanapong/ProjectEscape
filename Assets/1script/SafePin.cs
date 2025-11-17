@@ -31,9 +31,12 @@ public class SafePin : MonoBehaviour
     public float flashDuration = 0.3f;
     public float flashMaxAlpha = 0.6f;
 
-    // ⭐ ใหม่: เพิ่มลิสต์สำหรับลบ Tooltip หลังจากเซฟเปิด
     [Header("Tooltip To Delete When Solved")]
     public List<GameObject> tooltipObjects = new List<GameObject>();
+
+    [Header("Audio")]
+    public AudioSource correctSound;   // 🔊 เสียงตอนรหัสถูก
+    public AudioSource wrongSound;     // 🔊 เสียงตอนรหัสผิด
 
     private string input = "";
     private bool solved = false;
@@ -183,7 +186,11 @@ public class SafePin : MonoBehaviour
             solved = true;
             Debug.Log("✅ Safe opened!");
 
-            // ⭐ ลบ Tooltip ของ item ที่กำหนดไว้
+            // 🔊 เล่นเสียงรหัสถูก
+            if (correctSound != null)
+                correctSound.Play();
+
+            // ลบ tooltip ทั้งหมด
             foreach (GameObject obj in tooltipObjects)
             {
                 if (obj == null) continue;
@@ -211,6 +218,11 @@ public class SafePin : MonoBehaviour
         else
         {
             Debug.Log("❌ Wrong code!");
+
+            // 🔊 เล่นเสียงรหัสผิด
+            if (wrongSound != null)
+                wrongSound.Play();
+
             StartCoroutine(ShowTemporaryMessage("Wrong code!", 1.5f, Color.red));
 
             if (damageFlashPanel != null)
