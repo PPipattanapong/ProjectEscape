@@ -211,6 +211,11 @@ public class BookPuzzle : MonoBehaviour
 
     IEnumerator MoveSecretDoor()
     {
+        // เล่นเสียงจาก AudioSource บน secretDoor
+        AudioSource audio = secretDoor.GetComponent<AudioSource>();
+        if (audio != null)
+            audio.Play();
+
         Vector3 startPos = secretDoor.transform.position;
         Vector3 endPos = new Vector3(startPos.x + moveOffsetX, startPos.y, startPos.z);
 
@@ -225,4 +230,5 @@ public class BookPuzzle : MonoBehaviour
 
         secretDoor.transform.position = endPos;
     }
+
 }

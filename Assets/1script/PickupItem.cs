@@ -37,9 +37,31 @@ public class PickupItem : MonoBehaviour
             FlashlightController.Instance.EnableFlashlight();
         }
 
+        // 🔊 เล่นเสียง pickup จาก object ชื่อ "Pickup"
+        PlayPickupSound();
+
         gameObject.SetActive(false);
 
         Debug.Log(itemName + " collected!");
     }
 
+    private void PlayPickupSound()
+    {
+        // หา GameObject ชื่อ "Pickup" ในฉาก
+        GameObject obj = GameObject.Find("Pickup");
+        if (obj == null)
+        {
+            Debug.LogWarning("⚠ ไม่เจอ GameObject ชื่อ 'Pickup' ในฉาก");
+            return;
+        }
+
+        AudioSource audio = obj.GetComponent<AudioSource>();
+        if (audio == null)
+        {
+            Debug.LogWarning("⚠ GameObject 'Pickup' ไม่มี AudioSource");
+            return;
+        }
+
+        audio.Play();
+    }
 }

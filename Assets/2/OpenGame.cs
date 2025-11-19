@@ -26,13 +26,14 @@ public class ObjectClickOpener : MonoBehaviour
         if (targetObject != null)
             targetObject.SetActive(false);
 
+        // เปิดของพิเศษให้เห็นก่อน (ตามระบบเดิม)
         foreach (var obj in destroyWhenOpened)
         {
             if (obj != null)
                 obj.SetActive(true);
         }
 
-        // ปิด TextMeshPro ทั้งหมดก่อน
+        // ปิด world text ทั้งหมดก่อน
         foreach (var t in worldTexts)
         {
             if (t != null)
@@ -72,29 +73,36 @@ public class ObjectClickOpener : MonoBehaviour
         bool isActive = targetObject.activeSelf;
         targetObject.SetActive(!isActive);
 
-        // ถ้าเพิ่งเปิด → เช็ก WireCutter
+        // ถ้าเพิ่งเปิด → เริ่ม process fade และโชว์ text
         if (!isActive)
         {
-            CheckWireCutter();
-
-            foreach (var obj in destroyWhenOpened)
-            {
-                if (obj != null)
-                    StartCoroutine(FadeAndDestroy(obj, fadeDuration));
-            }
+            StartCoroutine(ProcessAfterOpen());
         }
     }
 
-    void CheckWireCutter()
+    IEnumerator ProcessAfterOpen()
     {
-        Transform found = targetObject.transform.Find("WireCutter");
-        bool hasWireCutter = found != null;
+        // หา WireCutter (ถ้ามี)
+        Transform wire = targetObject.transform.Find("WireCutter");
 
-        // เปิดหรือปิด TMP 3D ทั้งหมด
+        // ถ้ามี wire → fade ก่อน
+        if (wire != null)
+        {
+            yield return StartCoroutine(FadeAndDestroy(wire.gameObject, fadeDuration));
+        }
+
+        // wire หายแล้ว → ค่อยโชว์ world text ทั้งหมด
         foreach (var t in worldTexts)
         {
             if (t != null)
-                t.gameObject.SetActive(hasWireCutter);
+                t.gameObject.SetActive(true);
+        }
+
+        // fade ของในลิสต์ destroyWhenOpened ต่อ (ถ้ามี)
+        foreach (var obj in destroyWhenOpened)
+        {
+            if (obj != null)
+                StartCoroutine(FadeAndDestroy(obj, fadeDuration));
         }
     }
 

@@ -6,6 +6,11 @@ using TMPro;
 
 public class WirePuzzle : MonoBehaviour, IItemReceiver
 {
+    [Header("Audio Sources")]
+    public AudioSource activateAudio;   // 🔊 ตอนเปิดด้วยไขควง
+    public AudioSource failAudio;       // 🔊 ตอนพลาด
+    public AudioSource successAudio;    // 🔊 ตอนสำเร็จ
+
     [Header("Puzzle Parts")]
     public GameObject fieldObject;
     public GameObject startObject;
@@ -22,7 +27,6 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
     public string requiredItem = "Screwdriver";
 
     [Header("Penalty Settings")]
-    [Tooltip("จำนวนวินาทีที่จะลดเมื่อผู้เล่นลากออกนอกเส้น")]
     public float outOfPathPenalty = 10f;
 
     [Header("Flash Effect (Penalty)")]
@@ -38,10 +42,8 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
     public float textFadeDuration = 0.35f;
     public float messageHoldTime = 0.8f;
 
-    // ⭐ ใหม่: ลิสต์สำหรับลบ Tooltip เมื่อพัซเซิลผ่าน
     [Header("Tooltip To Delete When Solved")]
     public List<GameObject> tooltipObjects = new List<GameObject>();
-
 
     private bool isDragging = false;
     private bool solved = false;
@@ -85,6 +87,10 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
 
         if (itemName == requiredItem)
         {
+            // 🔊 เสียงตอนเปิดด้วยไขควง
+            if (activateAudio != null)
+                activateAudio.Play();
+
             activated = true;
             fieldObject.SetActive(true);
             startObject.SetActive(true);
@@ -156,6 +162,10 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         {
             Debug.LogWarning("[WirePuzzle] ❌ Out of red — Reset!");
 
+            // 🔊 เสียงพลาด (-10 วินาที)
+            if (failAudio != null)
+                failAudio.Play();
+
             if (damageFlashPanel != null)
                 StartCoroutine(FlashDamagePanel());
 
@@ -204,22 +214,27 @@ public class WirePuzzle : MonoBehaviour, IItemReceiver
         solved = true;
         doorLight.SetGreen();
 
+        // 🔊 เสียงตอนสำเร็จ
+        if (successAudio != null)
+            successAudio.Play();
+
         fieldObject.SetActive(false);
         startObject.SetActive(false);
         foreach (var pathObj in pathObjects)
             pathObj.SetActive(false);
         endObject.SetActive(false);
 
-        // ⭐ ลบ Tooltip ทั้งหมดที่กำหนด
+        // ลบ Tooltip
         foreach (var obj in tooltipObjects)
         {
             if (obj == null) continue;
 
             Tooltip t = obj.GetComponent<Tooltip>();
             if (t != null)
-                Destroy(t);    // 🔥 ลบ Tooltip component
+                Destroy(t);
         }
 
+        // ลบไอเทมไขควง
         foreach (var slot in FindObjectsOfType<InventorySlot>())
         {
             if (slot.currentItem != null && slot.currentItem.itemName == requiredItem)

@@ -41,6 +41,16 @@ public class WallCountdownWithImages : MonoBehaviour
     private float nextChangeTime;
     private bool isFading = false;
 
+    [Header("Time Warning Sounds")]
+    [Tooltip("List เสียงที่จะเล่นตามเวลาที่กำหนด")]
+    public List<AudioSource> warningSounds;
+
+    [Tooltip("เวลาที่จะเล่นเสียง (เป็นวินาที) เช่น 240 = 4 นาที")]
+    public List<float> warningTimes;
+
+    private HashSet<int> triggeredIndexes = new HashSet<int>();
+
+
     void Start()
     {
         // ----- Load PP effects -----
@@ -120,6 +130,19 @@ public class WallCountdownWithImages : MonoBehaviour
         // --- Time is up ---
         if (countdownTime <= 0 && !string.IsNullOrEmpty(nextSceneName))
             SceneManager.LoadScene(nextSceneName);
+
+        // --- Time Warning Sound ---
+        for (int i = 0; i < warningTimes.Count; i++)
+        {
+            if (!triggeredIndexes.Contains(i) && countdownTime <= warningTimes[i])
+            {
+                if (warningSounds != null && i < warningSounds.Count && warningSounds[i] != null)
+                    warningSounds[i].Play();
+
+                triggeredIndexes.Add(i);
+            }
+        }
+
     }
 
     private void ApplyAgingPostProcessing()

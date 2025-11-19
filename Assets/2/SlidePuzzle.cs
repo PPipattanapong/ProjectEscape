@@ -9,23 +9,18 @@ public class SlidePuzzle4x4 : MonoBehaviour
 {
     [Header("UI Settings")]
     public GameObject puzzlePanel;
-    public List<Button> tiles;             // ปุ่ม 1–15
-    public RectTransform emptySlot;        // ช่องว่าง
+    public List<Button> tiles;
+    public RectTransform emptySlot;
     public GameObject puzzleObject;
-    public Button shuffleButton;           // ปุ่ม RESET
-
-    [Header("Cheat Settings")]
-    public Button cheatButton;
-    public TextMeshProUGUI cheatButtonText;
+    public Button shuffleButton;
 
     [Header("Wire Reference")]
-    public WireCutPuzzle wireCutPuzzle;    // เรียกตอนชนะ
+    public WireCutPuzzle wireCutPuzzle;
 
     [Header("Extra Object To Destroy")]
     public GameObject destroyWhenSolved;
 
     [Header("Success Text")]
-    [Tooltip("ข้อความ SUCCESS ที่จะโชว์ตอนผ่านพัซเซิล")]
     public TextMeshProUGUI successText;
 
     [Header("Success Color")]
@@ -68,12 +63,45 @@ public class SlidePuzzle4x4 : MonoBehaviour
         }
 
         ResetTilesToStart();
+    }
 
-        if (cheatButton != null)
-            cheatButton.onClick.AddListener(CheatSolve);
+    void Update()
+    {
+        // เปิดหน้าต่าง
+        if (Input.GetMouseButtonDown(0) && !isOpen && !puzzleSolved)
+        {
+            Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            RaycastHit2D hit = Physics2D.Raycast(mousePos, Vector2.zero);
+            if (hit.collider != null && hit.collider.gameObject == puzzleObject)
+            {
+                puzzlePanel.SetActive(true);
+                isOpen = true;
+                return;
+            }
+        }
 
-        if (cheatButtonText != null)
-            cheatButtonText.text = "CHEAT!";
+        // ปิดหน้าต่าง
+        if (isOpen && Input.GetMouseButtonDown(0))
+        {
+            if (!IsPointerOverPanel())
+            {
+                CloseImmediately();
+            }
+        }
+
+        // 🔥 Cheat key (กด T = ผ่านทันที)
+        if (!puzzleSolved && Input.GetKeyDown(KeyCode.T))
+        {
+            Debug.Log("🧩 CHEAT: Solved by pressing T");
+            TriggerSolved();
+        }
+    }
+
+    bool IsPointerOverPanel()
+    {
+        if (panelRect == null) return false;
+        Vector2 mousePos = Input.mousePosition;
+        return RectTransformUtility.RectangleContainsScreenPoint(panelRect, mousePos, null);
     }
 
     void SetupGrid()
@@ -120,36 +148,6 @@ public class SlidePuzzle4x4 : MonoBehaviour
         }
     }
 
-    void Update()
-    {
-        if (Input.GetMouseButtonDown(0) && !isOpen && !puzzleSolved)
-        {
-            Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            RaycastHit2D hit = Physics2D.Raycast(mousePos, Vector2.zero);
-            if (hit.collider != null && hit.collider.gameObject == puzzleObject)
-            {
-                puzzlePanel.SetActive(true);
-                isOpen = true;
-                return;
-            }
-        }
-
-        if (isOpen && Input.GetMouseButtonDown(0))
-        {
-            if (!IsPointerOverPanel())
-            {
-                CloseImmediately();
-            }
-        }
-    }
-
-    bool IsPointerOverPanel()
-    {
-        if (panelRect == null) return false;
-        Vector2 mousePos = Input.mousePosition;
-        return RectTransformUtility.RectangleContainsScreenPoint(panelRect, mousePos, null);
-    }
-
     void MoveTile(int index)
     {
         if (puzzleSolved) return;
@@ -169,13 +167,6 @@ public class SlidePuzzle4x4 : MonoBehaviour
                 TriggerSolved();
             }
         }
-    }
-
-    void CheatSolve()
-    {
-        if (puzzleSolved) return;
-        Debug.Log("🧩 Cheat button pressed — puzzle instantly solved!");
-        TriggerSolved();
     }
 
     void TriggerSolved()
@@ -199,7 +190,6 @@ public class SlidePuzzle4x4 : MonoBehaviour
             successText.gameObject.SetActive(true);
         }
 
-        // ⭐ ลบ tooltip ของ object ที่กำหนดไว้
         foreach (var obj in objectsToRemoveTooltip)
         {
             if (obj != null)
