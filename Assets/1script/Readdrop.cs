@@ -33,7 +33,9 @@ public class Readdrop : MonoBehaviour
     public List<GameObject> tooltipObjects = new List<GameObject>();
 
     private bool solved = false;
-    private bool sawLastPage = false;
+
+    // ⭐ เงื่อนไขใหม่: ต้องเห็นหน้า 5–6 ก่อนถึงจะผ่าน
+    private bool sawRequiredPage = false;
 
     private GraphicRaycaster raycaster;
     private EventSystem eventSystem;
@@ -85,8 +87,9 @@ public class Readdrop : MonoBehaviour
             currentPage += 2;
             ShowPagesInstant();
 
-            if (currentPage + 1 >= pages.Length - 1)
-                sawLastPage = true;
+            // ⭐ ถ้าเปิดถึงหน้า 5–6 (index = 4) ให้ mark ว่าเห็นหน้าเป้าหมายแล้ว
+            if (currentPage == 4)
+                sawRequiredPage = true;
         }
     }
 
@@ -99,7 +102,8 @@ public class Readdrop : MonoBehaviour
             currentPage -= 2;
             ShowPagesInstant();
 
-            if (sawLastPage && currentPage <= 0)
+            // ⭐ ผ่าน puzzle ถ้าเคยถึงหน้า 5–6 และตอนนี้กลับมาหน้าแรก (0)
+            if (sawRequiredPage && currentPage == 0)
                 PuzzleSolved();
         }
     }
@@ -152,7 +156,7 @@ public class Readdrop : MonoBehaviour
 
             Tooltip t = obj.GetComponent<Tooltip>();
             if (t != null)
-                Destroy(t);    // ลบสคริปต์ Tooltip ออกไปเลย
+                Destroy(t);
         }
 
         if (noteLeft != null && panel != null)
