@@ -281,33 +281,38 @@ public class SlidePuzzle4x4 : MonoBehaviour
     {
         Debug.Log("🔁 Reset puzzle to custom starting layout.");
 
+        // แถว 1: 1 2 3 4
         tiles[0].GetComponent<RectTransform>().anchoredPosition = positions[0];
         tiles[1].GetComponent<RectTransform>().anchoredPosition = positions[1];
         tiles[2].GetComponent<RectTransform>().anchoredPosition = positions[2];
         tiles[3].GetComponent<RectTransform>().anchoredPosition = positions[3];
 
+        // แถว 2: 5 6 7 8
         tiles[4].GetComponent<RectTransform>().anchoredPosition = positions[4];
         tiles[5].GetComponent<RectTransform>().anchoredPosition = positions[5];
         tiles[6].GetComponent<RectTransform>().anchoredPosition = positions[6];
         tiles[7].GetComponent<RectTransform>().anchoredPosition = positions[7];
 
-        tiles[10].GetComponent<RectTransform>().anchoredPosition = positions[8];
-        tiles[9].GetComponent<RectTransform>().anchoredPosition = positions[9];
-        tiles[8].GetComponent<RectTransform>().anchoredPosition = positions[11];
+        // แถว 3: 9 emp 15 14
+        tiles[8].GetComponent<RectTransform>().anchoredPosition = positions[8];   // 9
+        emptySlot.anchoredPosition = positions[9];                                // emp
+        emptyIndex = 9;
 
-        emptyIndex = 10;
-        emptySlot.anchoredPosition = positions[10];
+        tiles[14].GetComponent<RectTransform>().anchoredPosition = positions[10]; // 15
+        tiles[13].GetComponent<RectTransform>().anchoredPosition = positions[11]; // 14
 
-        tiles[12].GetComponent<RectTransform>().anchoredPosition = positions[12];
-        tiles[11].GetComponent<RectTransform>().anchoredPosition = positions[13];
-        tiles[14].GetComponent<RectTransform>().anchoredPosition = positions[14];
-        tiles[13].GetComponent<RectTransform>().anchoredPosition = positions[15];
+        // แถว 4: 13 12 11 10
+        tiles[12].GetComponent<RectTransform>().anchoredPosition = positions[12]; // 13
+        tiles[11].GetComponent<RectTransform>().anchoredPosition = positions[13]; // 12
+        tiles[10].GetComponent<RectTransform>().anchoredPosition = positions[14]; // 11
+        tiles[9].GetComponent<RectTransform>().anchoredPosition = positions[15];  // 10
 
         puzzleSolved = false;
 
         if (successText != null)
             successText.gameObject.SetActive(false);
     }
+
 
     bool CheckWin()
     {

@@ -207,10 +207,11 @@ public class WireCutPuzzle : MonoBehaviour, IItemReceiver
         }
         else
         {
-            // -------------------- ตัดผิด --------------------
             failed = true;
 
-            // 🔊 เสียงตอนตัดผิด
+            // ❗ ตัดผิดก็ให้เส้นโดนตัดหายเหมือนกัน
+            wireImages[index].gameObject.SetActive(false);
+
             if (cutWrongSound != null)
                 cutWrongSound.Play();
 

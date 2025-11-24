@@ -2,8 +2,9 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
+using UnityEngine.SceneManagement;   // <<< เพิ่มบรรทัดนี้
 using UnityEngine.UI;
+
 
 public class VNGood : MonoBehaviour
 {
@@ -28,8 +29,8 @@ public class VNGood : MonoBehaviour
     public Image blackScreen;
 
     [Header("Fade Settings")]
-    public float fadeDuration = 2f;      // fade ของภาพปกติ
-    public float endFadeDuration = 2f;   // fade ตอนปิดฉาก
+    public float fadeDuration = 2f;
+    public float endFadeDuration = 2f;
 
     [System.Serializable]
     public struct FadeRule
@@ -43,11 +44,11 @@ public class VNGood : MonoBehaviour
     public List<FadeRule> fadeRules;
 
     [Header("Final Scene Clean Up")]
-    public Transform canvasRoot;                 // Canvas หลัก
-    public List<GameObject> finalUIToShow;       // finalUIToShow[0] = no fade, [1] = fade
+    public Transform canvasRoot;
+    public List<GameObject> finalUIToShow;
 
     [Header("Final Timing Settings")]
-    public float finalDisplayTime = 5f;          // เวลาที่ให้ UI แสดงก่อน fade-out
+    public float finalDisplayTime = 5f;
 
     [Header("Next Scene After End")]
     public string finalSceneName = "GameScene";
@@ -56,12 +57,13 @@ public class VNGood : MonoBehaviour
     private bool isTyping = false;
     private bool skipTyping = false;
 
+    private bool blockClick = false; // ห้ามผู้เล่นคลิกตอนฉาก Final ทำงาน
+
 
     void Start()
     {
         skipButton.onClick.AddListener(SkipToGame);
 
-        // เปิดภาพแรกสุด
         for (int i = 0; i < fadeImages.Count; i++)
         {
             bool active = (i == 0);
@@ -69,7 +71,6 @@ public class VNGood : MonoBehaviour
             SetAlpha(fadeImages[i], active ? 1f : 0f);
         }
 
-        // black screen = โปร่งใส
         SetAlpha(blackScreen, 0f);
         blackScreen.gameObject.SetActive(true);
 
@@ -77,17 +78,19 @@ public class VNGood : MonoBehaviour
     }
 
 
-
     void Update()
     {
+        if (blockClick) return;
+
         if (Input.GetMouseButtonDown(0))
             OnDialogueClick();
     }
 
 
-
     void OnDialogueClick()
     {
+        if (blockClick) return;
+
         if (isTyping)
         {
             skipTyping = true;
@@ -109,14 +112,12 @@ public class VNGood : MonoBehaviour
     }
 
 
-
     IEnumerator TypeLine()
     {
         isTyping = true;
         skipTyping = false;
         dialogueText.text = "";
 
-        // เช็คว่าบรรทัดนี้มี fade รูปไหม
         foreach (var rule in fadeRules)
         {
             if (rule.dialogueIndex == currentLineIndex)
@@ -128,7 +129,6 @@ public class VNGood : MonoBehaviour
 
         PlayVoiceForLine(currentLineIndex);
 
-        // แยก speaker กับ message
         string line = dialogueLines[currentLineIndex];
         string speaker = "";
         string message = line;
@@ -159,10 +159,6 @@ public class VNGood : MonoBehaviour
     }
 
 
-
-    // ===========================
-    // Fade ผ่านจอดำกลางจอ
-    // ===========================
     IEnumerator FadeImagesWithBlack(int fromIndex, int toIndex)
     {
         Image from = fadeImages[fromIndex];
@@ -173,34 +169,28 @@ public class VNGood : MonoBehaviour
         SetTextAlpha(0f);
 
         blackScreen.gameObject.SetActive(true);
-
         float half = fadeDuration / 2f;
         float timer = 0f;
 
-        // Fade to black
         while (timer < half)
         {
             timer += Time.deltaTime;
             float t = timer / half;
-
             SetAlpha(blackScreen, Mathf.Lerp(0f, 1f, t));
             yield return null;
         }
 
-        // เปลี่ยนรูป
         SetAlpha(from, 0f);
         from.gameObject.SetActive(false);
 
         to.gameObject.SetActive(true);
         SetAlpha(to, 1f);
 
-        // Fade back to image
         timer = 0f;
         while (timer < half)
         {
             timer += Time.deltaTime;
             float t = timer / half;
-
             SetAlpha(blackScreen, Mathf.Lerp(1f, 0f, t));
             yield return null;
         }
@@ -209,13 +199,10 @@ public class VNGood : MonoBehaviour
     }
 
 
-
-    // ===========================
-    // END SEQUENCE
-    // ===========================
     IEnumerator EndSequence()
     {
-        // Fade to black (แต่ตอนนี้จะช้ากว่าเดิม เพราะใช้ endFadeDuration)
+        blockClick = true; // ห้ามคลิกเพิ่ม
+
         float timer = 0f;
         while (timer < endFadeDuration)
         {
@@ -225,11 +212,9 @@ public class VNGood : MonoBehaviour
             yield return null;
         }
 
-        // ปิดทุก UI ใน canvas
         foreach (Transform child in canvasRoot)
             child.gameObject.SetActive(false);
 
-        // finalUIToShow[0] = โชว์เลย ไม่ fade
         if (finalUIToShow.Count > 0)
         {
             finalUIToShow[0].SetActive(true);
@@ -244,14 +229,12 @@ public class VNGood : MonoBehaviour
             }
         }
 
-        // finalUIToShow[1] = fade-in แล้ว fade-out
         GameObject ui1 = null;
         if (finalUIToShow.Count > 1)
             ui1 = finalUIToShow[1];
 
         if (ui1 != null)
         {
-            // ตั้งเริ่มต้นเป็น alpha 0 ก่อน fade-in
             if (ui1.TryGetComponent<Image>(out Image img1))
                 SetAlpha(img1, 0f);
 
@@ -263,14 +246,15 @@ public class VNGood : MonoBehaviour
 
             ui1.SetActive(true);
 
-            // Fade-in
             timer = 0f;
             while (timer < fadeDuration)
             {
                 timer += Time.deltaTime;
                 float t = timer / fadeDuration;
 
-                if (img1 != null) SetAlpha(img1, t);
+                if (ui1.TryGetComponent<Image>(out Image img))
+                    SetAlpha(img, t);
+
                 if (ui1.TryGetComponent<TextMeshProUGUI>(out TextMeshProUGUI tmp))
                 {
                     var c = tmp.color; c.a = t; tmp.color = c;
@@ -279,17 +263,17 @@ public class VNGood : MonoBehaviour
                 yield return null;
             }
 
-            // wait finalDisplayTime
             yield return new WaitForSeconds(finalDisplayTime);
 
-            // Fade-out
             timer = 0f;
             while (timer < fadeDuration)
             {
                 timer += Time.deltaTime;
                 float t = timer / fadeDuration;
 
-                if (img1 != null) SetAlpha(img1, 1f - t);
+                if (ui1.TryGetComponent<Image>(out Image img))
+                    SetAlpha(img, 1f - t);
+
                 if (ui1.TryGetComponent<TextMeshProUGUI>(out TextMeshProUGUI tmp2))
                 {
                     var c = tmp2.color; c.a = 1f - t; tmp2.color = c;
@@ -299,10 +283,8 @@ public class VNGood : MonoBehaviour
             }
         }
 
-        // load next scene
         SceneManager.LoadScene(finalSceneName);
     }
-
 
 
     void PlayVoiceForLine(int index)
@@ -332,8 +314,21 @@ public class VNGood : MonoBehaviour
     }
 
 
+    // ===========================
+    //      NEW SKIP BUTTON
+    // ===========================
     void SkipToGame()
     {
-        SceneManager.LoadScene(finalSceneName);
+        if (blockClick) return;
+
+        if (voiceSource != null && voiceSource.isPlaying)
+            voiceSource.Stop();
+
+        isTyping = false;
+        skipTyping = true;
+
+        currentLineIndex = dialogueLines.Length - 1;
+
+        StartCoroutine(EndSequence());
     }
 }
