@@ -35,6 +35,7 @@ public class LineConnector : MonoBehaviour
 
     private bool puzzleSolved = false;
 
+
     void Start()
     {
         if (mainCamera == null)
@@ -67,7 +68,7 @@ public class LineConnector : MonoBehaviour
     {
         if (puzzleSolved) return;
 
-        // ==== CLICK DOWN ====
+        // ---------------- CLICK DOWN ----------------
         if (Input.GetMouseButtonDown(0))
         {
             Vector2 mousePos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
@@ -77,10 +78,12 @@ public class LineConnector : MonoBehaviour
             {
                 startPoint = hit.transform;
 
+                // สร้างเส้นใหม่
                 currentLine = Instantiate(linePrefab, Vector3.zero, Quaternion.identity, lineParent);
                 currentLine.positionCount = 2;
                 currentLine.useWorldSpace = true;
 
+                // เริ่มด้วยสีดำ (ยังไม่เชื่อม)
                 Gradient g = new Gradient();
                 g.SetKeys(
                     new GradientColorKey[] {
@@ -94,7 +97,9 @@ public class LineConnector : MonoBehaviour
                 );
 
                 currentLine.colorGradient = g;
-                currentLine.material = new Material(currentLine.material);
+
+                // ⭐ Clone material จาก sharedMaterial ไม่แตะ prefab โดยตรง
+                currentLine.material = new Material(linePrefab.sharedMaterial);
                 currentLine.material.color = Color.black;
 
                 currentLine.SetPosition(0, startPoint.position);
@@ -102,7 +107,7 @@ public class LineConnector : MonoBehaviour
             }
         }
 
-        // ==== DRAG ====
+        // ---------------- DRAG ----------------
         if (Input.GetMouseButton(0) && currentLine != null)
         {
             Vector3 mousePos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
@@ -110,12 +115,10 @@ public class LineConnector : MonoBehaviour
             currentLine.SetPosition(1, mousePos);
         }
 
-        // ==== RELEASE ====
+        // ---------------- RELEASE ----------------
         if (Input.GetMouseButtonUp(0) && currentLine != null)
         {
             Vector2 mousePos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
-
-            // ⭐ ไม่สนว่ามี object อะไรบัง — เช็คทุก collider
             RaycastHit2D[] hits = Physics2D.RaycastAll(mousePos, Vector2.zero);
 
             Collider2D endPointHit = null;
@@ -137,11 +140,11 @@ public class LineConnector : MonoBehaviour
                 if (correctPairs.ContainsKey(startName) && correctPairs[startName] == endName)
                 {
                     // เสียงสำเร็จทีละเส้น
-                    if (connectSuccessSound != null)
-                        connectSuccessSound.Play();
+                    connectSuccessSound?.Play();
 
-                    // เปลี่ยนสีเส้น
+                    // เปลี่ยนสีเส้นตามคู่ที่ถูกต้อง
                     Color pairColor = pairColorMap[startName];
+
                     Gradient successGradient = new Gradient();
                     successGradient.SetKeys(
                         new GradientColorKey[] {
@@ -155,27 +158,26 @@ public class LineConnector : MonoBehaviour
                     );
 
                     currentLine.colorGradient = successGradient;
+
+                    // ⭐ เปลี่ยนสี material ของ instance ได้เลย
                     currentLine.material.color = pairColor;
 
                     currentLine.SetPosition(1, endPointHit.transform.position);
 
-                    // ปิดจุด start/end
+                    // ปิด node
                     startPoint.gameObject.SetActive(false);
                     endPointHit.gameObject.SetActive(false);
 
                     usedPoints.Add(startName);
                     usedPoints.Add(endName);
 
-                    // puzzle completed?
+                    // ---- Puzzle Completed ----
                     if (usedPoints.Count >= correctPairs.Count * 2)
                     {
                         puzzleSolved = true;
 
-                        if (puzzleCompleteSound != null)
-                            puzzleCompleteSound.Play();
-
-                        if (wireCutPuzzle != null)
-                            wireCutPuzzle.ApplyStarColor();
+                        puzzleCompleteSound?.Play();
+                        wireCutPuzzle?.ApplyStarColor();
 
                         if (successText != null)
                         {
