@@ -35,7 +35,6 @@ public class LineConnector : MonoBehaviour
 
     private bool puzzleSolved = false;
 
-
     void Start()
     {
         if (mainCamera == null)
@@ -44,14 +43,13 @@ public class LineConnector : MonoBehaviour
         if (successText != null)
             successText.gameObject.SetActive(false);
 
-        // คู่ที่ถูกต้อง
+        // valid pair
         correctPairs.Add("A", "1");
         correctPairs.Add("B", "2");
         correctPairs.Add("C", "3");
         correctPairs.Add("D", "4");
         correctPairs.Add("E", "5");
 
-        // สีตามลำดับคู่
         int index = 0;
         foreach (var pair in correctPairs)
         {
@@ -72,18 +70,28 @@ public class LineConnector : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
             Vector2 mousePos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
-            Collider2D hit = Physics2D.OverlapPoint(mousePos);
 
-            if (hit != null && hit.CompareTag("StartPoint") && !usedPoints.Contains(hit.name))
+            // หาเฉพาะ StartPoint
+            Collider2D[] hits = Physics2D.OverlapPointAll(mousePos);
+
+            Collider2D startHit = null;
+            foreach (var h in hits)
             {
-                startPoint = hit.transform;
+                if (h != null && h.CompareTag("StartPoint"))
+                {
+                    startHit = h;
+                    break;
+                }
+            }
 
-                // สร้างเส้นใหม่
+            if (startHit != null && !usedPoints.Contains(startHit.name))
+            {
+                startPoint = startHit.transform;
+
                 currentLine = Instantiate(linePrefab, Vector3.zero, Quaternion.identity, lineParent);
                 currentLine.positionCount = 2;
                 currentLine.useWorldSpace = true;
 
-                // เริ่มด้วยสีดำ (ยังไม่เชื่อม)
                 Gradient g = new Gradient();
                 g.SetKeys(
                     new GradientColorKey[] {
@@ -98,7 +106,6 @@ public class LineConnector : MonoBehaviour
 
                 currentLine.colorGradient = g;
 
-                // ⭐ Clone material จาก sharedMaterial ไม่แตะ prefab โดยตรง
                 currentLine.material = new Material(linePrefab.sharedMaterial);
                 currentLine.material.color = Color.black;
 
@@ -119,15 +126,16 @@ public class LineConnector : MonoBehaviour
         if (Input.GetMouseButtonUp(0) && currentLine != null)
         {
             Vector2 mousePos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
-            RaycastHit2D[] hits = Physics2D.RaycastAll(mousePos, Vector2.zero);
+
+            // หาเฉพาะ EndPoint ก่อน
+            Collider2D[] hits = Physics2D.OverlapPointAll(mousePos);
 
             Collider2D endPointHit = null;
-
             foreach (var h in hits)
             {
-                if (h.collider != null && h.collider.CompareTag("EndPoint"))
+                if (h != null && h.CompareTag("EndPoint"))
                 {
-                    endPointHit = h.collider;
+                    endPointHit = h;
                     break;
                 }
             }
@@ -139,10 +147,8 @@ public class LineConnector : MonoBehaviour
 
                 if (correctPairs.ContainsKey(startName) && correctPairs[startName] == endName)
                 {
-                    // เสียงสำเร็จทีละเส้น
                     connectSuccessSound?.Play();
 
-                    // เปลี่ยนสีเส้นตามคู่ที่ถูกต้อง
                     Color pairColor = pairColorMap[startName];
 
                     Gradient successGradient = new Gradient();
@@ -158,20 +164,17 @@ public class LineConnector : MonoBehaviour
                     );
 
                     currentLine.colorGradient = successGradient;
-
-                    // ⭐ เปลี่ยนสี material ของ instance ได้เลย
                     currentLine.material.color = pairColor;
 
                     currentLine.SetPosition(1, endPointHit.transform.position);
 
-                    // ปิด node
                     startPoint.gameObject.SetActive(false);
                     endPointHit.gameObject.SetActive(false);
 
                     usedPoints.Add(startName);
                     usedPoints.Add(endName);
 
-                    // ---- Puzzle Completed ----
+                    // Puzzle Completed
                     if (usedPoints.Count >= correctPairs.Count * 2)
                     {
                         puzzleSolved = true;
